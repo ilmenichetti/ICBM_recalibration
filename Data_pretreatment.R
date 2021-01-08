@@ -467,15 +467,14 @@ names(calib_data_Ultuna[[17]])<-"number of treatments"
 
 
 png("Ultuna_SOC_data_used.png", height=1800, width=2500, res=380)
-plot(year(Ultuna_date_vector_year_long),calib_data_Ultuna[[1]][1,],
-     col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
+plot(year(Ultuna_date_vector_year),calib_data_Ultuna[[1]][1,1:length(Ultuna_date_vector_year)],
+     col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,130), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
 for(i in 1:15){
   lines(year(Ultuna_date_vector_year),na.approx(as.numeric(calib_data_Ultuna[[1]][i,])), col=Ultuna_treat_palette[[i]], type="l")
   points(year(Ultuna_date_vector_year_long),calib_data_Ultuna[[1]][i,],
          col=Ultuna_treat_palette[[i]], pch=pch_list[[i]])
 }
 legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
-
 dev.off()
 
 data_descr_Ultuna<-data.frame(names(calib_data_Ultuna), 
