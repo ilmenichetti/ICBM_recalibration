@@ -371,34 +371,46 @@ for(i in 1:dim(Ultuna_SOC_timeseries_long)[1]){
 }
 
 ################### Read eqiovalent soil depth calculations #########################
-Ultuna_SOC_timeseries_long2<-read_excel("./Ultuna_SOC_equiv_depth_TK.xlsx", sheet="Ultuna_SOC_stocks")[,-1]
-Ultuna_SOC_timeseries_long_pre<-Ultuna_SOC_timeseries_long
-Ultuna_SOC_timeseries_long<-as.matrix(Ultuna_SOC_timeseries_long2)
+Ultuna_SOC_timeseries_TK<-as.data.frame(read_excel("./SOC_equivalent_depth_1956-2019_TK.xlsx", sheet="SOCeq_depth")[,-1])*10^-3
+years<-seq(from=1956, to=2017)
+Ultuna_SOC_timeseries_long2<-mat.or.vec(15,length(years) )
 
+for(i in 1:length(years)){
+  if(years[i] %in% colnames(Ultuna_SOC_timeseries_TK)){
+    Ultuna_SOC_timeseries_long2[,i]<-unlist(Ultuna_SOC_timeseries_TK[which(years[i]==colnames(Ultuna_SOC_timeseries_TK))])
+  } else{ Ultuna_SOC_timeseries_long2[,i]=NA}
+}
+
+Ultuna_SOC_timeseries_long_pre<-Ultuna_SOC_timeseries_long
+Ultuna_SOC_timeseries_long<-Ultuna_SOC_timeseries_long2
+colnames(Ultuna_SOC_timeseries_long)<-years
 
 
 
 png("Thomas_SOC_data.png", height=1800, width=2500, res=380)
-plot(colnames(Ultuna_SOC_timeseries_long),Ultuna_SOC_timeseries_long[1,],
+plot(years,Ultuna_SOC_timeseries_long[1,],
      col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
-for(i in 1:60){
-  lines(colnames(Ultuna_SOC_timeseries_long),na.approx(Ultuna_SOC_timeseries_long[i,]), col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], type="l")
-  points(colnames(Ultuna_SOC_timeseries_long),(Ultuna_SOC_timeseries_long[i,]),
-         col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], pch=pch_list[as.numeric(as.factor(Ultuna_treat))[i]])
+for(i in 1:15){
+  lines(years,na.approx(Ultuna_SOC_timeseries_long[i,]), col=Ultuna_treat_palette[i], type="l")
+  points(years,(Ultuna_SOC_timeseries_long[i,]),
+         col=Ultuna_treat_palette[i], pch=pch_list[i])
 }
 legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
 dev.off()
 
 
 
-##add back NAs where the original measurement is missing (no interpolation)
-Ultuna_SOC_timeseries_long[is.na(Ultuna_C_timeseries_long)]<-NA
-aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1]
-
+# ##add back NAs where the original measurement is missing (no interpolation)
+# Ultuna_SOC_timeseries_long[is.na(Ultuna_C_timeseries_long)]<-NA
+# aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1]
+# 
 
 calib_data_Ultuna = list(##Ultuna loop
-  'SOC_Ultuna' = append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'SOC_init_Ultuna' = aggregate(Ultuna_SOC_timeseries_long[,1], by=list(Ultuna_treat), FUN=mean)[,-1],
+  #'SOC_Ultuna' = append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'SOC_Ultuna' = append_NA(Ultuna_SOC_timeseries_long, N=newyears),
+  #'SOC_init_Ultuna' = aggregate(Ultuna_SOC_timeseries_long[,1], by=list(Ultuna_treat), FUN=mean)[,-1],
+  'SOC_init_Ultuna' = Ultuna_SOC_timeseries_long[,1],
+  #'error_SOC_Ultuna'= aggregate(Ultuna_max_err_byplot, by=list(Ultuna_treat), FUN=mean)[,-1],
   'error_SOC_Ultuna'= aggregate(Ultuna_max_err_byplot, by=list(Ultuna_treat), FUN=mean)[,-1],
   'error_SOC_multiplier_Ultuna' = c(1, rep(1,14)),
   'Yields_cereals_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_cereals*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
@@ -411,9 +423,10 @@ calib_data_Ultuna = list(##Ultuna loop
   'I_SAW_Ultuna'= append_mean(aggregate(h_SAW_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
   'I_SLU_Ultuna'= append_mean(aggregate(h_SLU_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
   'I_STR_Ultuna'= append_mean(aggregate(h_STR_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'N_Ultuna' = dim(append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears))[2],
+  'N_Ultuna' = dim(append_NA(Ultuna_SOC_timeseries_long, N=newyears))[2],
   're_Ultuna'= append_mean(as.data.frame(t(re_Ultuna)), N=newyears),
-  'J_Ultuna'=dim(append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears))[1])
+  #'J_Ultuna'=dim(append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears))[1])
+  'J_Ultuna'=dim(append_NA(Ultuna_SOC_timeseries_long, N=newyears))[1])
 
 Ultuna_date_vector_year_long<-seq.Date(from = as.Date(ISOdate(head(Ultuna_years_first,1),1,1)),
                                        to=as.Date(ISOdate(head(Ultuna_years_last+newyears,1),12,31)), by="year")
@@ -449,20 +462,11 @@ names(calib_data_Ultuna[[15]])<-"Simulation length"
 names(calib_data_Ultuna[[17]])<-"number of treatments"
 
 
-plot(colnames(Ultuna_SOC_timeseries_long),Ultuna_SOC_timeseries_long[1,],
-     col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
-for(i in 1:60){
-  lines(colnames(Ultuna_SOC_timeseries_long),na.approx(Ultuna_SOC_timeseries_long[i,]), col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], type="l")
-  points(colnames(Ultuna_SOC_timeseries_long),(Ultuna_SOC_timeseries_long[i,]),
-         col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], pch=pch_list[as.numeric(as.factor(Ultuna_treat))[i]])
-}
-legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
 
 
 
 
 png("Ultuna_SOC_data_used.png", height=1800, width=2500, res=380)
-
 plot(year(Ultuna_date_vector_year_long),calib_data_Ultuna[[1]][1,],
      col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
 for(i in 1:15){
@@ -931,3 +935,5 @@ dev.off()
 
 
 save.image(file="Pretreatment.Rdata")
+
+saveRDS(calib_data_Ultuna, file = "Ultuna_input.rds")

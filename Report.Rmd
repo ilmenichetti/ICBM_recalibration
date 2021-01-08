@@ -79,43 +79,28 @@ for(i in 1:60){
 legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
 ```
 
-But we later decided to use a calculation from Thomas with a different equivalent soil depth value (the file is in this folder, **Ultuna_SOC_equiv_depth_TK.xlsx**):
+But we decided to use a calculation from Thomas with a different equivalent soil depth value (the file is in this folder, **SOC_equivalent_depth_1956-2019_TK**):
 
 ```{r, echo=TRUE, results='hide',  message=FALSE,  warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-Ultuna_SOC_timeseries_long2<-read_excel("./Ultuna_SOC_equiv_depth_TK.xlsx", 
-                                        sheet="Ultuna_SOC_stocks")[,-1]
+Ultuna_SOC_timeseries_TK<-as.data.frame(read_excel("./SOC_equivalent_depth_1956-2019_TK.xlsx", sheet="SOCeq_depth")[,-1])*10^-3
 ```
 
 
-Which contains the following data:
-```{r, echo=FALSE,  fig1.1, fig.height = 6, fig.width = 8, fig.align = "center"}
-plot(as.numeric(Ultuna_SOC_timeseries_long[1,]),
-     col=Ultuna_treat_palette[1], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
-for(i in 1:60){
-   lines(na.approx(Ultuna_SOC_timeseries_long[i,]), col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], type="l")
-   points((Ultuna_SOC_timeseries_long[i,]),
-          col=Ultuna_treat_palette[as.numeric(as.factor(Ultuna_treat))[i]], pch=pch_list[as.numeric(as.factor(Ultuna_treat))[i]])
- }
- legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
-```
-
-
-
-And gives as final input for the calculations, after having averaged for each treatment:
+Which contains the following data, here plotted from the final object that will be the input of the calibration:
 ```{r, echo=FALSE,  fig1.2, fig.height = 6, fig.width = 8, fig.align = "center"}
 plot(year(Ultuna_date_vector_year_long),calib_data_Ultuna[[1]][1,],
-     col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,100), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
+     col=Ultuna_treat_palette[as.numeric(as.factor(treat_vec[1]))], type="l", ylim=c(0,120), xlab="year", ylab=expression('SOC (Mg ha' ^ -1~')'))
 for(i in 1:15){
   lines(year(Ultuna_date_vector_year),na.approx(as.numeric(calib_data_Ultuna[[1]][i,])), col=Ultuna_treat_palette[[i]], type="l")
   points(year(Ultuna_date_vector_year_long),calib_data_Ultuna[[1]][i,],
          col=Ultuna_treat_palette[[i]], pch=pch_list[[i]])
 }
 legend("topleft", LETTERS[1:15], col=Ultuna_treat_palette, bty="n", lty=1, pch=seq(1:15),cex=0.7)
+
 ```
 
 
-Reclim values are read from a separate file, calculated with my package, and are in a matrix 15 x 62 (treatment level) that is the extended to 60 x 62.
-
+Reclim values are read from a separate file, calculated with my package, and are in a matrix 15 x 62 (treatment level) that is the extended to 60 x 62. The following plot is also plotted directly from the object that ends in
 ```{r, echo=FALSE,  fig2, fig.height = 6, fig.width = 8, fig.align = "center"}
 re_Ultuna_plot<- calib_data_Ultuna$re_Ultuna
 #re_Ultuna_plot<- re_Ultuna_long

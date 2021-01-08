@@ -4,10 +4,26 @@
 library(rjags)
 library(coda)
 library(modeest)
+library(viridis)
+Ultuna_treat_palette<-rev(viridis(16)[2:16])
+# ALPHA TO COLOR - cosmetics
+# function to add an alpha value to a colour
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2,
+        function(x)
+          rgb(x[1], x[2], x[3], alpha=alpha))
+}
+
+Ultuna_treat_palette_alpha<-add.alpha(Ultuna_treat_palette,0.5)
 
 # loading Thomas input calculation for plotting them against the calculated inputs
 Thomas_2011_inputs<-read_ods("../Data/FRAME56/Thomas_Kätterer_2011_yield_corr_c_och_e_input_eq_depth.ods", sheet=4)
 
+
+# reading the input data object
+calib_data_Ultuna<- readRDS(file = "Ultuna_input.rds")
 
 
 
@@ -37,7 +53,7 @@ sampling.nr=100
 
 
 N=newyears
-dim(Ultuna_SOC_timeseries_long)
+
 model.ICBM.matrix_Ultuna<- jags.model('./JAGS_ICBM_3.1_Ultuna.R',
                                data=calib_data_Ultuna,
                                n.chains = 1,
@@ -88,10 +104,12 @@ mcmc.list.fluxS.Ultuna<-as.mcmc.list(mcmc.array.ICBM.Ultuna$I_S_Ultuna, chains=F
 mcmc.unlist.fluxS.Ultuna<-mcmc.list.fluxS.Ultuna[[1]]
 
 
+#newyears=10
 
 #extract the array of the realizations*treatments*years
-dim<-dim(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1])
-dim[2]<-dim[2]+N
+#dim<-dim(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1])
+dim<-dim(calib_data_Ultuna$SOC_Ultuna)
+#dim[2]<-dim[2]+N
 Ultuna_prediction_array<-array( ,dim=c(sampling.nr,dim))
 str(Ultuna_prediction_array)
 for(j in 1:sampling.nr){
@@ -139,63 +157,64 @@ for(j in 1:sampling.nr){
   }
 }
 
+
 #mean, min and max matrices by plot
 Ultuna_mean_predictions<-(colMeans(Ultuna_prediction_array))
 Ultuna_max_predictions<-apply(Ultuna_prediction_array, MARGIN=c(2,3), max)
 Ultuna_min_predictions<-apply(Ultuna_prediction_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_predictions)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_max_predictions)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_min_predictions)<-as.factor(unique(Ultuna_treat))
+rownames(Ultuna_mean_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_max_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_min_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
 
 Ultuna_mean_Ir<-(colMeans(Ultuna_inputR_array))
 Ultuna_max_Ir<-apply(Ultuna_inputR_array, MARGIN=c(2,3), max)
 Ultuna_min_Ir<-apply(Ultuna_inputR_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_Ir)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_max_Ir)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_min_Ir)<-as.factor(unique(Ultuna_treat))
+rownames(Ultuna_mean_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_max_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_min_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
 
 Ultuna_mean_Is<-(colMeans(Ultuna_inputS_array))
 Ultuna_max_Is<-apply(Ultuna_inputS_array, MARGIN=c(2,3), max)
 Ultuna_min_Is<-apply(Ultuna_inputS_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_Is)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_max_Is)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_min_Is)<-as.factor(unique(Ultuna_treat))
+rownames(Ultuna_mean_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_max_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_min_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
 
 Ultuna_mean_fluxS<-(colMeans(Ultuna_fluxS_array))
 Ultuna_max_fluxS<-apply(Ultuna_fluxS_array, MARGIN=c(2,3), max)
 Ultuna_min_fluxS<-apply(Ultuna_fluxS_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_fluxS)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_max_fluxS)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_min_fluxS)<-as.factor(unique(Ultuna_treat))
+rownames(Ultuna_mean_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_max_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_min_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
 
 Ultuna_mean_fluxR<-(colMeans(Ultuna_fluxR_array))
 Ultuna_max_fluxR<-apply(Ultuna_fluxR_array, MARGIN=c(2,3), max)
 Ultuna_min_fluxR<-apply(Ultuna_fluxR_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_fluxR)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_max_fluxR)<-as.factor(unique(Ultuna_treat))
-rownames(Ultuna_min_fluxR)<-as.factor(unique(Ultuna_treat))
+rownames(Ultuna_mean_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_max_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_min_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
 
 
 #mean, min and max matrices by treatment
 #Ultuna_treat_vec<-LETTERS[yields_Ultuna[yields_Ultuna$year==1996,]$treat]
-Ultuna_treat_vec_old<-LETTERS[yields_Ultuna[yields_Ultuna$year==1956,]$treat]
-Ultuna_treat_vec<-as.factor(unique(Ultuna_treat))
-Ultuna_mean_predictions_bytreat<-mat.or.vec(15,62+N)
-Ultuna_max_predictions_bytreat<-mat.or.vec(15,62+N)
-Ultuna_min_predictions_bytreat<-mat.or.vec(15,62+N)
-Ultuna_mean_Ir_bytreat<-mat.or.vec(15,62+N)
-Ultuna_max_Ir_bytreat<-mat.or.vec(15,62+N)
-Ultuna_min_Ir_bytreat<-mat.or.vec(15,62+N)
-Ultuna_mean_Is_bytreat<-mat.or.vec(15,62+N)
-Ultuna_max_Is_bytreat<-mat.or.vec(15,62+N)
-Ultuna_min_Is_bytreat<-mat.or.vec(15,62+N)
-Ultuna_mean_fluxS_bytreat<-mat.or.vec(15,62+N)
-Ultuna_max_fluxS_bytreat<-mat.or.vec(15,62+N)
-Ultuna_min_fluxS_bytreat<-mat.or.vec(15,62+N)
-Ultuna_mean_fluxR_bytreat<-mat.or.vec(15,62+N)
-Ultuna_max_fluxR_bytreat<-mat.or.vec(15,62+N)
-Ultuna_min_fluxR_bytreat<-mat.or.vec(15,62+N)
-Ultuna_measured_bytreat<-mat.or.vec(15,62)
+#Ultuna_treat_vec_old<-LETTERS[yields_Ultuna[yields_Ultuna$year==1956,]$treat]
+Ultuna_treat_vec<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+Ultuna_mean_predictions_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_max_predictions_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_min_predictions_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_mean_Ir_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_max_Ir_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_min_Ir_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_mean_Is_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_max_Is_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_min_Is_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_mean_fluxS_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_max_fluxS_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_min_fluxS_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_mean_fluxR_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_max_fluxR_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_min_fluxR_bytreat<-mat.or.vec(15,dim[2])
+Ultuna_measured_bytreat<-mat.or.vec(15,dim[2])
 for(i in 1:15){
   Ultuna_mean_predictions_bytreat[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_min_predictions_bytreat[i,]<-Ultuna_min_predictions[i,]
@@ -212,10 +231,8 @@ for(i in 1:15){
   Ultuna_mean_fluxR_bytreat[i,]<-Ultuna_mean_fluxR[i,]
   Ultuna_min_fluxR_bytreat[i,]<-Ultuna_min_fluxR[i,]
   Ultuna_max_fluxR_bytreat[i,]<-Ultuna_max_fluxR[i,]
-  Ultuna_measured_bytreat[i,]<-colMeans(Ultuna_SOC_timeseries_long[(Ultuna_treat_vec_old)==LETTERS[i],])
+  Ultuna_measured_bytreat[i,]<-(calib_data_Ultuna$SOC_Ultuna[i,])
 }
-
-
 
 
 write.csv(t(Ultuna_mean_Ir_bytreat), file="Ultuna_mean_Ir_bytreat.csv")
@@ -226,14 +243,14 @@ Ultuna_Ir_table<-as.data.frame(Ultuna_mean_Ir_bytreat)
 Ultuna_Is_table<-as.data.frame(Ultuna_mean_Is_bytreat)
 Ultuna_Pred_table<-as.data.frame(Ultuna_max_predictions_bytreat)
 
-colnames(Ultuna_yields_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
-rownames(Ultuna_yields_table)<-LETTERS[1:15]
-colnames(Ultuna_Ir_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
-rownames(Ultuna_Ir_table)<-LETTERS[1:15]
-colnames(Ultuna_Is_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
-rownames(Ultuna_Is_table)<-LETTERS[1:15]
-colnames(Ultuna_Pred_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
-rownames(Ultuna_Pred_table)<-LETTERS[1:15]
+#colnames(Ultuna_yields_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
+#rownames(Ultuna_yields_table)<-LETTERS[1:15]
+# colnames(Ultuna_Ir_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
+# rownames(Ultuna_Ir_table)<-LETTERS[1:15]
+# colnames(Ultuna_Is_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
+# rownames(Ultuna_Is_table)<-LETTERS[1:15]
+# colnames(Ultuna_Pred_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop
+# rownames(Ultuna_Pred_table)<-LETTERS[1:15]
 
 Ultuna_Is_table<-rbind(Ultuna_Is_table, seq(from=1956, to=(1956+71)))
 Ultuna_Ir_table<-rbind(Ultuna_Ir_table, seq(from=1956, to=(1956+71)))
@@ -256,10 +273,10 @@ for(i in 1:15){
   Ultuna_Thomas_Ir_table[i,]<-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001
 }
 
-colnames(Ultuna_Thomas_Ir_table)<-yields_Ultuna[yields_Ultuna$plot==3,]$crop[1:54]
+colnames(Ultuna_Thomas_Ir_table)<-colnames(calib_data_Ultuna$SOC_Ultuna)[1:54]
 rownames(Ultuna_Thomas_Ir_table)<-LETTERS[1:15]
 
-write_ods(Ultuna_Thomas_Ir_table, "Ultuna_input_check.ods", sheet="Thomas calculations IR (C,ton ha-1)", append=T, row_names = T, update=T)
+write_ods(Ultuna_Thomas_Ir_table, "Ultuna_input_check.ods", sheet="Thomas calculations IR (C,ton ha-1)", append=T, row_names = T)
 
 
 png("input_comparison.png", width=4000, height=4000, res=300)
@@ -295,66 +312,66 @@ dev.off()
 png("ICBM_predictions_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat[i,1:lastyear], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_max_predictions_bytreat[i,1:lastyear],rev(Ultuna_min_predictions_bytreat[i,1:lastyear])),
+          c(Ultuna_max_predictions_bytreat[i,],rev(Ultuna_min_predictions_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_predictions_bytreat[i,1:lastyear], col="black", lty=1, lwd=1)
-  lines(year(Ultuna_date_vector_year)[2:62], na_interpolation(Ultuna_measured_bytreat[i,1:61]), col="firebrick", lty=2, lwd=2)
+  lines(yearseq, Ultuna_mean_predictions_bytreat[i,], col="black", lty=1, lwd=1)
+  lines(yearseq[2:62], na_interpolation(Ultuna_measured_bytreat[i,1:61]), col="firebrick", lty=2, lwd=2)
 }
 dev.off()
 
 png("ICBM_Ir_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_Ir_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_Ir_bytreat[i,1:lastyear], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_Ir_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_max_Ir_bytreat[i,1:lastyear],rev(Ultuna_min_Ir_bytreat[i,1:lastyear])),
+          c(Ultuna_max_Ir_bytreat[i,],rev(Ultuna_min_Ir_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_Ir_bytreat[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_Ir_bytreat[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
 png("ICBM_Is_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_Is_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_Is_bytreat[i,1:lastyear], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_Is_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_max_Is_bytreat[i,1:lastyear],rev(Ultuna_min_Is_bytreat[i,1:lastyear])),
+          c(Ultuna_max_Is_bytreat[i,],rev(Ultuna_min_Is_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_Is_bytreat[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_Is_bytreat[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
 png("ICBM_fluxS_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_fluxS_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_fluxS_bytreat[i,1:lastyear], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_fluxS_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_max_fluxS_bytreat[i,1:lastyear],rev(Ultuna_min_fluxS_bytreat[i,1:lastyear])),
+          c(Ultuna_max_fluxS_bytreat[i,],rev(Ultuna_min_fluxS_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_fluxS_bytreat[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_fluxS_bytreat[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
 png("ICBM_fluxR_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_fluxR_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_fluxR_bytreat[i,1:lastyear], ylim=c(0.4,-0.5), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_fluxR_bytreat[i,], ylim=c(0.4,-0.5), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_max_fluxR_bytreat[i,1:lastyear],rev(Ultuna_min_fluxR_bytreat[i,1:lastyear])),
+          c(Ultuna_max_fluxR_bytreat[i,],rev(Ultuna_min_fluxR_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_fluxR_bytreat[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_fluxR_bytreat[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
@@ -383,9 +400,9 @@ rownames(Ultuna_max_predictions)<-LETTERS[1:15]
 rownames(Ultuna_min_predictions)<-LETTERS[1:15]
 
 #mean, min and max matrices by treatment
-Ultuna_mean_predictions_bytreat_Y<-mat.or.vec(15,62+N)
-Ultuna_max_predictions_bytreat_Y<-mat.or.vec(15,62+N)
-Ultuna_min_predictions_bytreat_Y<-mat.or.vec(15,62+N)
+Ultuna_mean_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
+Ultuna_max_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
+Ultuna_min_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
 for(i in 1:15){
   Ultuna_mean_predictions_bytreat_Y[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_max_predictions_bytreat_Y[i,]<-Ultuna_min_predictions[i,]
@@ -414,9 +431,9 @@ rownames(Ultuna_max_predictions)<-LETTERS[1:15]
 rownames(Ultuna_min_predictions)<-LETTERS[1:15]
 
 #mean, min and max matrices by treatment
-Ultuna_mean_predictions_bytreat_O<-mat.or.vec(15,62+N)
-Ultuna_max_predictions_bytreat_O<-mat.or.vec(15,62+N)
-Ultuna_min_predictions_bytreat_O<-mat.or.vec(15,62+N)
+Ultuna_mean_predictions_bytreat_O<-mat.or.vec(15,dim[2])
+Ultuna_max_predictions_bytreat_O<-mat.or.vec(15,dim[2])
+Ultuna_min_predictions_bytreat_O<-mat.or.vec(15,dim[2])
 for(i in 1:15){
   Ultuna_mean_predictions_bytreat_O[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_max_predictions_bytreat_O[i,]<-Ultuna_min_predictions[i,]
@@ -426,26 +443,26 @@ for(i in 1:15){
 png("ICBM_predictions_Ultuna_O_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat_O)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat_O[i,1:lastyear], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat_O[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_min_predictions_bytreat_O[i,1:lastyear],rev(Ultuna_max_predictions_bytreat_O[i,1:lastyear])),
+          c(Ultuna_min_predictions_bytreat_O[i,],rev(Ultuna_max_predictions_bytreat_O[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_predictions_bytreat_O[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_predictions_bytreat_O[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
 png("ICBM_predictions_Ultuna_Y_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
 for(i in 1:15){
-  yearseq<-seq(from=year(Ultuna_date_vector_year)[1], to=(N+year(Ultuna_date_vector_year)[61]))
+  yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat_Y)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat_Y[i,1:lastyear], ylim=c(0,6), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat_Y[i,], ylim=c(0,6), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
-          c(Ultuna_min_predictions_bytreat_Y[i,1:lastyear],rev(Ultuna_max_predictions_bytreat_Y[i,1:lastyear])),
+          c(Ultuna_min_predictions_bytreat_Y[i,],rev(Ultuna_max_predictions_bytreat_Y[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
-  lines(yearseq, Ultuna_mean_predictions_bytreat_Y[i,1:lastyear], col="black", lty=1, lwd=1)
+  lines(yearseq, Ultuna_mean_predictions_bytreat_Y[i,], col="black", lty=1, lwd=1)
 }
 dev.off()
 
