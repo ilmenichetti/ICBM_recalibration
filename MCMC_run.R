@@ -114,7 +114,7 @@ Ultuna_prediction_array<-array( ,dim=c(sampling.nr,dim))
 str(Ultuna_prediction_array)
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_prediction_array[j,,i]<-mcmc.unlist.SOC.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -124,7 +124,7 @@ for(j in 1:sampling.nr){
 Ultuna_inputS_array<-array( ,dim=c(sampling.nr,dim))
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_inputS_array[j,,i]<-mcmc.unlist.Is.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -133,7 +133,7 @@ for(j in 1:sampling.nr){
 Ultuna_inputR_array<-array( ,dim=c(sampling.nr,dim))
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_inputR_array[j,,i]<-mcmc.unlist.Ir.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -142,7 +142,7 @@ for(j in 1:sampling.nr){
 Ultuna_fluxS_array<-array( ,dim=c(sampling.nr,dim))
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_fluxS_array[j,,i]<-mcmc.unlist.fluxS.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -151,7 +151,7 @@ for(j in 1:sampling.nr){
 Ultuna_fluxR_array<-array( ,dim=c(sampling.nr,dim))
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_fluxR_array[j,,i]<-mcmc.unlist.fluxR.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -386,7 +386,7 @@ Ultuna_prediction_array<-array( ,dim=c(sampling.nr,dim))
 str(Ultuna_prediction_array)
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_prediction_array[j,,i]<-mcmc.unlist.Y.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
@@ -417,7 +417,7 @@ Ultuna_prediction_array<-array( ,dim=c(sampling.nr,dim))
 str(Ultuna_prediction_array)
 for(j in 1:sampling.nr){
   length_treat<-dim[1]
-  for(i in 1:(dim[2]-1)){
+  for(i in 1:(dim[2])){
     length_treat_add<-length_treat*i
     Ultuna_prediction_array[j,,i]<-mcmc.unlist.O.Ultuna[j,(1-length_treat+length_treat_add):length_treat_add]
   }
