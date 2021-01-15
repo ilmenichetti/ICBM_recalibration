@@ -25,7 +25,7 @@ model{
       I_R_maize_Ultuna[j,i]        <-  (1+exudates_coeff)*((Yields_maize_Ultuna[j,i])*0.7*C_percent*(1/SR_maize_ult))
       I_R_Ultuna[j,i]              <-  I_R_cereals_Ultuna[j,i]+I_R_root_crops_Ultuna[j,i]+I_R_oilseeds_Ultuna[j,i]+I_R_maize_Ultuna[j,i]
       #Inputs S
-      I_S_Ultuna[j,i]              <- (Yields_cereals_Ultuna[j,i]+Yields_root_crops_Ultuna[j,i]+Yields_oilseeds_Ultuna[j,i]+Yields_maize_Ultuna[j,i])*stubbles_ratio_Ultuna*C_percent
+      I_S_Ultuna[j,i]              <- ((Yields_cereals_Ultuna[j,i]+Yields_root_crops_Ultuna[j,i]+Yields_oilseeds_Ultuna[j,i])*stubbles_ratio_Ultuna+Yields_maize_Ultuna[j,i]*stubbles_ratio_Ultuna_maize)*C_percent
 
       #Young R
       Y_R_Ultuna[j,i+1] 		<-  (I_R_Ultuna[j,i]+Y_R_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
@@ -109,9 +109,9 @@ model{
 
   Init_ratio_Ultuna ~ dnorm(0.9291667,1/(0.9291667*0.2)) T(0.8,0.98)
 
-  stubbles_ratio_Ultuna ~ dnorm(0.04,1/0.01) T(0.02,0.06)
-  stubbles_ratio_Lanna ~ dnorm(0.33,1/0.05) T(0.1,0.45)
-
+  stubbles_ratio_Ultuna_maize ~ dnorm(0.04,1/0.01) T(0.01,0.08)
+  stubbles_ratio_Ultuna ~ dnorm(0.04,1/0.01) T(0.01,0.08)
+  
   C_percent ~ dunif(0.40, 0.51)
 
   error_h<-0.2

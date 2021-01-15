@@ -1,10 +1,13 @@
 
 
-
+library(readODS)
 library(rjags)
 library(coda)
 library(modeest)
 library(viridis)
+library(RColorBrewer)
+library(imputeTS)
+
 Ultuna_treat_palette<-rev(viridis(16)[2:16])
 # ALPHA TO COLOR - cosmetics
 # function to add an alpha value to a colour
@@ -73,6 +76,7 @@ parameter_list<-c("k1_ult",
                   "h_SLU_ult",
                   "exudates_coeff",
                   "stubbles_ratio_Ultuna",
+                  "stubbles_ratio_Ultuna_maize",
                   "SR_cereals_ult","SR_root_crops_ult","SR_oilseeds_ult", "SR_maize_ult",
                   "Tot_Ultuna",
                   "Y_tot_Ultuna",
@@ -472,10 +476,9 @@ dev.off()
 
 ###Plot parameter posteriors
 
-parameters_palette_multi<-c("darkorange","cadetblue",
-                            "cornsilk4","darkgreen","chocolate4","lightpink4","lightgoldenrod3","burlywood4",
-                            "blueviolet","darkcyan",
-                            brewer.pal(5, "BuPu")[2:5])
+parameters_palette_multi<-c("darkorange","cadetblue", "cornsilk4","darkgreen","chocolate4",
+                            "lightpink4","lightgoldenrod3","burlywood4","blueviolet","darkcyan",
+                            brewer.pal(6, "BuPu")[2:6])
 parameters_palette_multi_alpha<-add.alpha(parameters_palette_multi,0.7)
 
 
@@ -489,6 +492,7 @@ parameter_names<-c(expression(paste("k"[1])),
                    expression(paste("h"[SLU])),
                    "Exudates coefficient",
                    "Stubbles ratio",
+                   "Stubbles ratio (maize)",
                    "S:R cereals","S:R root crops","S:R oilseeds", "S:R maize")
 
 library(modeest)
@@ -514,6 +518,7 @@ h_SAW   <- rtruncnorm(5000, mean=0.25, sd=(0.25*error_h), a=0.25-limits_h, b=0.2
 h_SLU   <- rtruncnorm(5000, mean=0.41, sd=(0.41*error_h), a=0.41-limits_h, b=0.41+limits_h)
 
 stubbles_ratio_Ultuna <- rtruncnorm(5000, mean=0.04, sd=0.01, a=0.001, b=0.08)
+stubbles_ratio_Ultuna_maize <- rtruncnorm(5000, mean=0.04, sd=0.01, a=0.001, b=0.08)
 
 # Init_ratio_Ultuna <- rtruncnorm(5000, mean=0.9291667, sd=0.0001, a=0.9, b=0.95)
 # Init_ratio_Lanna <- rtruncnorm(5000, mean=0.9291667, sd=0.0001, a=0.9, b=0.95)
@@ -538,20 +543,21 @@ parameter_values<-mat.or.vec(length(parameter_list[1:29]),4)
 colnames(parameter_values)<-c("mode","mean","min","max")
 rownames(parameter_values)<-parameter_list[1:29]
 
-priors_list<-list(k1, #                       1
-                  k2, #                       2
-                  h_R, #                      3
-                  h_S, #                      4
-                  h_FYM, #                    5
-                  h_PEA, #                    6
-                  h_SAW, #                    7
-                  h_SLU, #                    8
-                  exudates_coeff, #           9
-                  stubbles_ratio_Ultuna, #    10
-                  SR_cereals, #               11
-                  SR_root_crops, #            12
-                  SR_oilseeds, #              13
-                  SR_maize) #                 14
+priors_list<-list(k1, #                           1
+                  k2, #                           2
+                  h_R, #                          3
+                  h_S, #                          4
+                  h_FYM, #                        5
+                  h_PEA, #                        6
+                  h_SAW, #                        7
+                  h_SLU, #                        8
+                  exudates_coeff, #               9
+                  stubbles_ratio_Ultuna, #        10
+                  stubbles_ratio_Ultuna_maize, #  11
+                  SR_cereals, #                   12
+                  SR_root_crops, #                13
+                  SR_oilseeds, #                  14
+                  SR_maize) #                     15
 
 priors_list_d<-list()
 for(i in 1:length(priors_list)){priors_list_d[[i]]<-density(priors_list[[i]])}
@@ -688,8 +694,18 @@ plot(density_list_multisite[[10]], main=parameter_names[10],xlim=c(range[1]-(ran
 polygon(density_list_multisite[[10]], col=add.alpha(parameters_palette_multi[i],0.8))
 polygon(priors_list_d[[10]], col=add.alpha("lightgrey", 0.1), lty=2)
 
+#stubbles ratio maize
+range<-range(c(density_list_multisite[[11]]$x, priors_list_d[[11]]$x))
+mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[11]]$x))
+rangey<-range(c(density_list_multisite[[11]]$y, priors_list_d[[11]]$y))
+plot(density_list_multisite[[11]], main=parameter_names[11],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
+polygon(density_list_multisite[[11]], col=add.alpha(parameters_palette_multi[i],0.8))
+polygon(priors_list_d[[11]], col=add.alpha("lightgrey", 0.1), lty=2)
 
-for(i in 11:14){
+
+
+
+for(i in 12:15){
   range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
@@ -724,7 +740,7 @@ for(i in 1:2){
   mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
   meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-  
+
   plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
   polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
   polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
@@ -818,7 +834,18 @@ polygon(density_list_multisite[[10]], col=add.alpha(parameters_palette_multi[i],
 polygon(priors_list_d[[10]], col=add.alpha("lightgrey", 0.1), lty=2)
 
 
-for(i in 11:14){
+#stubbles ratio maize
+range<-range(c(density_list_multisite[[11]]$x, priors_list_d[[11]]$x))
+mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[11]]$x))
+rangey<-range(c(density_list_multisite[[11]]$y, priors_list_d[[11]]$y))
+plot(density_list_multisite[[11]], main=parameter_names[11],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
+polygon(density_list_multisite[[11]], col=add.alpha(parameters_palette_multi[i],0.8))
+polygon(priors_list_d[[11]], col=add.alpha("lightgrey", 0.1), lty=2)
+
+
+
+
+for(i in 12:15){
   range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
@@ -827,6 +854,7 @@ for(i in 11:14){
   polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
   polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 }
+
 
 
 dev.off()
