@@ -859,3 +859,38 @@ for(i in 12:15){
 
 dev.off()
 
+
+
+#residuals
+residuals<-calib_data_Ultuna$SOC_Ultuna-Ultuna_mean_predictions_bytreat
+
+residuals_type<-calib_data_Ultuna$Yields_cereals_Ultuna
+residuals_type[!calib_data_Ultuna$Yields_cereals_Ultuna==0]="Cereals"
+residuals_type[!calib_data_Ultuna$Yields_root_crops_Ultuna==0]="Roots"
+residuals_type[!calib_data_Ultuna$Yields_oilseeds_Ultuna==0]="Oilseeds"
+residuals_type[!calib_data_Ultuna$Yields_maize_Ultuna==0]="Maize"
+
+
+png("residuals.png", width = 5000, height=4000, res=300)
+par(mfrow=c(5,3))
+for(i in 1:15){
+plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[i]), pch=16, ylim=range(residuals, na.rm=T))
+axis(1, at=seq(1, length(residuals_type)), labels= residuals_type[i,], las=2, cex.axis=0.5)
+axis(2) #default way
+abline(h=0, lty=2)
+box()
+}
+dev.off()
+
+
+png("residuals_freescale.png", width = 5000, height=4000, res=300)
+par(mfrow=c(5,3))
+for(i in 1:15){
+  plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[i]), pch=16)
+  axis(1, at=seq(1, length(residuals_type)), labels= residuals_type[i,], las=2, cex.axis=0.5)
+  axis(2) #default way
+  abline(h=0, lty=2)
+  box()
+}
+dev.off()
+

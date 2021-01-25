@@ -98,10 +98,10 @@ model{
   h_SLU_ult   ~ dnorm(0.41,1/(0.41*error_h)) T(0.41-limits_h,0.41+limits_h)
 
   #root/shoot ratios priors
-  SR_cereals_ult    ~ dnorm(11, 1/(11*error_SR)) T(11-11*error_SR,11+11*error_SR)
-  SR_root_crops_ult ~ dnorm(29.49853, 1/(29.49853*error_SR)) T(29.49853-29.49853*error_SR,29.49853+29.49853*error_SR)
-  SR_oilseeds_ult   ~ dnorm(8, 1/(8*error_SR)) T(8-8*error_SR,8+8*error_SR)
-  SR_maize_ult      ~ dnorm(6.25, 1/(6.25*error_SR)) T(6.25-6.25*error_SR,6.25+6.25*error_SR)
+  SR_cereals_ult    ~ dnorm(11, 1/(11*error_SR)) T(11-11*limit_SR,11+11*limit_SR)
+  SR_root_crops_ult ~ dnorm(29.49853, 1/(29.49853*limit_SR)) T(29.49853-29.49853*error_SR,29.49853+29.49853*limit_SR)
+  SR_oilseeds_ult   ~ dnorm(8, 1/(8*error_SR)) T(8-8*limit_SR,8+8*limit_SR)
+  SR_maize_ult      ~ dnorm(6.25, 1/(6.25*error_SR)) T(6.25-6.25*limit_SR,6.25+6.25*limit_SR)
 
 
 
@@ -117,6 +117,7 @@ model{
   error_h<-0.2
   limits_h<-0.3
   error_SR<-0.25
-
+  limit_SR<-0.5
+  
 
 }
