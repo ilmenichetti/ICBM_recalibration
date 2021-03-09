@@ -404,29 +404,34 @@ dev.off()
 # Ultuna_SOC_timeseries_long[is.na(Ultuna_C_timeseries_long)]<-NA
 # aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1]
 # 
+#
+data_years<-dim(Ultuna_SOC_timeseries_long)[2]
+#lim<-data_years-18 line to remove the maize period
+lim<-data_years
+
 
 calib_data_Ultuna = list(##Ultuna loop
   #'SOC_Ultuna' = append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'SOC_Ultuna' = append_NA(Ultuna_SOC_timeseries_long, N=newyears),
+  'SOC_Ultuna' = append_NA(Ultuna_SOC_timeseries_long[,1:lim], N=newyears),
   #'SOC_init_Ultuna' = aggregate(Ultuna_SOC_timeseries_long[,1], by=list(Ultuna_treat), FUN=mean)[,-1],
-  'SOC_init_Ultuna' = Ultuna_SOC_timeseries_long[,1],
+  'SOC_init_Ultuna' = Ultuna_SOC_timeseries_long[,1:lim][,1],
   #'error_SOC_Ultuna'= aggregate(Ultuna_max_err_byplot, by=list(Ultuna_treat), FUN=mean)[,-1],
   'error_SOC_Ultuna'= aggregate(Ultuna_max_err_byplot, by=list(Ultuna_treat), FUN=mean)[,-1],
   'error_SOC_multiplier_Ultuna' = c(1, rep(1,14)),
-  'Yields_cereals_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_cereals*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'Yields_root_crops_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_roots*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'Yields_oilseeds_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_oil*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'Yields_maize_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_maize*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_FYM_Ultuna'= append_mean(aggregate(h_FYM_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_GM_Ultuna'= append_mean(aggregate(h_GM_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_PEA_Ultuna'= append_mean(aggregate(h_PEA_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_SAW_Ultuna'= append_mean(aggregate(h_SAW_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_SLU_Ultuna'= append_mean(aggregate(h_SLU_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'I_STR_Ultuna'= append_mean(aggregate(h_STR_Ultuna_long*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
-  'N_Ultuna' = dim(append_NA(Ultuna_SOC_timeseries_long, N=newyears))[2],
-  're_Ultuna'= append_mean(as.data.frame(t(re_Ultuna)), N=newyears),
+  'Yields_cereals_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_cereals[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'Yields_root_crops_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_roots[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'Yields_oilseeds_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_oil[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'Yields_maize_Ultuna'= append_mean(aggregate(Ultuna_yields_timeseries_long_maize[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_FYM_Ultuna'= append_mean(aggregate(h_FYM_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_GM_Ultuna'= append_mean(aggregate(h_GM_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_PEA_Ultuna'= append_mean(aggregate(h_PEA_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_SAW_Ultuna'= append_mean(aggregate(h_SAW_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_SLU_Ultuna'= append_mean(aggregate(h_SLU_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'I_STR_Ultuna'= append_mean(aggregate(h_STR_Ultuna_long[,1:lim]*10^-3, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears),
+  'N_Ultuna' = dim(append_NA(Ultuna_SOC_timeseries_long[,1:lim], N=newyears))[2],
+  're_Ultuna'= append_mean(as.data.frame(t(re_Ultuna[1:lim,])), N=newyears),
   #'J_Ultuna'=dim(append_NA(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1], N=newyears))[1])
-  'J_Ultuna'=dim(append_NA(Ultuna_SOC_timeseries_long, N=newyears))[1])
+  'J_Ultuna'=dim(append_NA(Ultuna_SOC_timeseries_long[,1:lim], N=newyears))[1])
 
 Ultuna_date_vector_year_long<-seq.Date(from = as.Date(ISOdate(head(Ultuna_years_first,1),1,1)),
                                        to=as.Date(ISOdate(head(Ultuna_years_last+newyears,1),12,31)), by="year")

@@ -15,6 +15,7 @@ model{
     Y_STR_Ultuna[j,1]<-0
     O_Ultuna[j,1]  <-SOC_init_Ultuna[j]*Init_ratio_Ultuna
 
+    k2_treat[j]<- ifelse(j==9 || j==13 || j==15, k2_ult_or, k2_ult)
 
     for (i in 1:(N_Ultuna)){
 
@@ -39,16 +40,16 @@ model{
       Y_STR_Ultuna[j,i+1] 		<-  (I_STR_Ultuna[j,i]+Y_STR_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
 
       #Old
-      fluxR_Ultuna[j,i] 		  <-  h_R_ult*((k1_ult*(Y_R_Ultuna[j,i]+I_R_Ultuna[j,i]))/(k2_ult-k1_ult))
-      fluxS_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_S_Ultuna[j,i]+I_S_Ultuna[j,i]))/(k2_ult-k1_ult))
+      fluxR_Ultuna[j,i] 		  <-  h_R_ult*((k1_ult*(Y_R_Ultuna[j,i]+I_R_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      fluxS_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_S_Ultuna[j,i]+I_S_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
 
       #old flux manure
-      flux_FYM_Ultuna[j,i] 		  <-  h_FYM_ult*((k1_ult*(Y_FYM_Ultuna[j,i]+I_FYM_Ultuna[j,i]))/(k2_ult-k1_ult))
-      flux_GM_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_GM_Ultuna[j,i]+I_GM_Ultuna[j,i]))/(k2_ult-k1_ult))
-      flux_PEA_Ultuna[j,i] 		  <-  h_PEA_ult*((k1_ult*(Y_PEA_Ultuna[j,i]+I_PEA_Ultuna[j,i]))/(k2_ult-k1_ult))
-      flux_SAW_Ultuna[j,i] 		  <-  h_SAW_ult*((k1_ult*(Y_SAW_Ultuna[j,i]+I_SAW_Ultuna[j,i]))/(k2_ult-k1_ult))
-      flux_SLU_Ultuna[j,i] 		  <-  h_SLU_ult*((k1_ult*(Y_SLU_Ultuna[j,i]+I_SLU_Ultuna[j,i]))/(k2_ult-k1_ult))
-      flux_STR_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_STR_Ultuna[j,i]+I_STR_Ultuna[j,i]))/(k2_ult-k1_ult))
+      flux_FYM_Ultuna[j,i] 		  <-  h_FYM_ult*((k1_ult*(Y_FYM_Ultuna[j,i]+I_FYM_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      flux_GM_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_GM_Ultuna[j,i]+I_GM_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      flux_PEA_Ultuna[j,i] 		  <-  h_PEA_ult*((k1_ult*(Y_PEA_Ultuna[j,i]+I_PEA_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      flux_SAW_Ultuna[j,i] 		  <-  h_SAW_ult*((k1_ult*(Y_SAW_Ultuna[j,i]+I_SAW_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      flux_SLU_Ultuna[j,i] 		  <-  h_SLU_ult*((k1_ult*(Y_SLU_Ultuna[j,i]+I_SLU_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
+      flux_STR_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_STR_Ultuna[j,i]+I_STR_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
 
       flux_sum_Ultuna[j,i]<-(fluxR_Ultuna[j,i]+
                                fluxS_Ultuna[j,i]+
@@ -60,7 +61,7 @@ model{
                                flux_STR_Ultuna[j,i])
 
 
-      O_Ultuna[j,i+1]   	<-  (O_Ultuna[j,i]-flux_sum_Ultuna[j,i])*exp(-k2_ult*re_Ultuna[j,i]) +
+      O_Ultuna[j,i+1]   	<-  (O_Ultuna[j,i]-flux_sum_Ultuna[j,i])*exp(-k2_treat[j]*re_Ultuna[j,i]) +
                               flux_sum_Ultuna[j,i]*exp(-k1_ult*re_Ultuna[j,i])
 
 
