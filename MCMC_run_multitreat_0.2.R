@@ -28,9 +28,32 @@ Thomas_2011_inputs<-read_ods("../Data/FRAME56/Thomas_Kätterer_2011_yield_corr_c
 
 
 # reading the input data object
-#calib_data_Ultuna<- readRDS(file = "Ultuna_input.rds")
-calib_data_Ultuna<- readRDS(file = "Ultuna_input_1999.rds") #for excluding the maize years
+calib_data_Ultuna<- readRDS(file = "Ultuna_input.rds")
+#calib_data_Ultuna<- readRDS(file = "Ultuna_input_1999.rds") #for excluding the maize years
+for(i in 1:length(names(calib_data_Ultuna))){
+  name<-names(calib_data_Ultuna)[i]
+  Output = paste("../ICBM_recalibration_GLUE/data/",name, ".csv")
+  write.csv(calib_data_Ultuna[i], Output)
+  
+}
 
+
+yields_list<-calib_data_Ultuna$Yields_cereals_Ultuna
+yields_list[calib_data_Ultuna$Yields_cereals_Ultuna>0]<-"cereals"
+yields_list[calib_data_Ultuna$Yields_root_crops_Ultuna>0]<-"root_crops"
+yields_list[calib_data_Ultuna$Yields_oilseeds_Ultuna>0]<-"oilseeds"
+yields_list[calib_data_Ultuna$Yields_maize_Ultuna>0]<-"maize"
+
+write.csv(yields_list[2,], "../ICBM_recalibration_GLUE/data/crop_list.csv", row.names = F)
+
+
+yields_tot<-calib_data_Ultuna$Yields_cereals_Ultuna
+yields_tot[calib_data_Ultuna$Yields_cereals_Ultuna>0]<-calib_data_Ultuna$Yields_cereals_Ultuna[calib_data_Ultuna$Yields_cereals_Ultuna>0]
+yields_tot[calib_data_Ultuna$Yields_root_crops_Ultuna>0]<-calib_data_Ultuna$Yields_root_crops_Ultuna[calib_data_Ultuna$Yields_root_crops_Ultuna>0]
+yields_tot[calib_data_Ultuna$Yields_oilseeds_Ultuna>0]<-calib_data_Ultuna$Yields_oilseeds_Ultuna[calib_data_Ultuna$Yields_oilseeds_Ultuna>0]
+yields_tot[calib_data_Ultuna$Yields_maize_Ultuna>0]<-calib_data_Ultuna$Yields_maize_Ultuna[calib_data_Ultuna$Yields_maize_Ultuna>0]
+
+write.csv(yields_tot, "../ICBM_recalibration_GLUE/data/yields_tot.csv", row.names = F)
 
 
 #############################################
@@ -38,8 +61,9 @@ calib_data_Ultuna<- readRDS(file = "Ultuna_input_1999.rds") #for excluding the m
 #############################################
 
 ## normalize re_clim on treatment G in Ultuna
-#re_normalization<-rowMeans(aggregate(re_Ultuna_long, by=list(Ultuna_treat), FUN=mean)[,-1])[7]
+re_normalization<-rowMeans(aggregate(re_Ultuna_long, by=list(Ultuna_treat), FUN=mean)[,-1])[7]
 
+calib_data_Ultuna$error_SOC_Ultuna
 
 
 #INIT RATIO PRIORS
@@ -52,9 +76,9 @@ Init_prior_Ultuna<-1-YSS_Ultuna/OSS_Ultuna
 
 library(modeest)
 
-N.ADAPTS=300
-N.RUNS=5000
-N.BURNIN=200
+N.ADAPTS=1000
+N.RUNS=2000
+N.BURNIN=500
 sampling.nr=100
 
 
@@ -75,17 +99,38 @@ Xie_data_k1<-c(
   1.2372810571300257)
 mean(Xie_data_k1)
 sd(Xie_data_k1)
+range(Xie_data_k1)
+quantile(Xie_data_k1, c(0.05, 0.95))
+
+
+
 
 
 #N=newyears
+###SELECT SPECIFIC TREATMENTS
+selection_treatments<-c(1:8,10,11,12,14)
+#selection_treatments<-c(1:15)
+LETTERS[selection_treatments]
 
-calib_data_Ultuna$J_Ultuna<-9 #stopping at treatment i
+str(calib_data_Ultuna)
+for(i in 1:(length(calib_data_Ultuna)-1)){
+  if(length(dim(calib_data_Ultuna[[i]]))>0){
+  calib_data_Ultuna[[i]]<-calib_data_Ultuna[[i]][selection_treatments,]
+  }else {
+    calib_data_Ultuna[[i]]<-calib_data_Ultuna[[i]][selection_treatments]
+    
+  }
+}
 
-model.ICBM.matrix_Ultuna<- jags.model('./JAGS_ICBM_3.1_Ultuna_multitreat.R',
+calib_data_Ultuna$J_Ultuna<-length(selection_treatments)
+calib_data_Ultuna$N_Ultuna<-as.numeric(calib_data_Ultuna$N_Ultuna[1])
+
+#########
+
+model.ICBM.matrix_Ultuna<- jags.model('./JAGS_ICBM_3.1_Ultuna_multitreat_9treat_unif.R',
                                data=calib_data_Ultuna,
-                               n.chains = 1,
+                               n.chains = 3,
                                n.adapt = N.ADAPTS)
-
 
 update(model.ICBM.matrix_Ultuna, n.iter=N.RUNS, n.thin=10, n.burnin=N.BURNIN)
 
@@ -93,14 +138,12 @@ update(model.ICBM.matrix_Ultuna, n.iter=N.RUNS, n.thin=10, n.burnin=N.BURNIN)
 
 parameter_list<-c("k1_ult",
                   "k2_ult",
-                  "k2_ult_or",
                   "h_R_ult",
                   "h_S_ult",
                   "h_FYM_ult",
                   "h_PEA_ult",
                   "h_SAW_ult",
                   "h_SLU_ult",
-                  "exudates_coeff",
                   "stubbles_ratio_Ultuna",
                   "stubbles_ratio_Ultuna_maize",
                   "SR_cereals_ult","SR_root_crops_ult","SR_oilseeds_ult", "SR_maize_ult",
@@ -111,7 +154,10 @@ parameter_list<-c("k1_ult",
                   "I_S_Ultuna",
                   "fluxR_Ultuna",
                   "fluxS_Ultuna",
-                  "Y_R_Ultuna")
+                  "Y_R_Ultuna",
+                  "Init_ratio_Ultuna",
+                  "alpha",
+                  "alpha_maize")
 
 mcmc.array.ICBM.Ultuna<-(jags.samples(model.ICBM.matrix_Ultuna,parameter_list, sampling.nr))
 
@@ -139,7 +185,7 @@ mcmc.unlist.fluxS.Ultuna<-mcmc.list.fluxS.Ultuna[[1]]
 #extract the array of the realizations*treatments*years
 #dim<-dim(aggregate(Ultuna_SOC_timeseries_long, by=list(Ultuna_treat), FUN=mean)[,-1])
 dim<-dim(calib_data_Ultuna$SOC_Ultuna)
-#dim[2]<-dim[2]+N
+dim[1]<-calib_data_Ultuna$J_Ultuna
 Ultuna_prediction_array<-array( ,dim=c(sampling.nr,dim))
 str(Ultuna_prediction_array)
 for(j in 1:sampling.nr){
@@ -192,37 +238,37 @@ for(j in 1:sampling.nr){
 Ultuna_mean_predictions<-(colMeans(Ultuna_prediction_array))
 Ultuna_max_predictions<-apply(Ultuna_prediction_array, MARGIN=c(2,3), max)
 Ultuna_min_predictions<-apply(Ultuna_prediction_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_max_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_min_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_mean_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_predictions)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
 
 Ultuna_mean_Ir<-(colMeans(Ultuna_inputR_array))
 Ultuna_max_Ir<-apply(Ultuna_inputR_array, MARGIN=c(2,3), max)
 Ultuna_min_Ir<-apply(Ultuna_inputR_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_max_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_min_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_mean_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_Ir)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
 
 Ultuna_mean_Is<-(colMeans(Ultuna_inputS_array))
 Ultuna_max_Is<-apply(Ultuna_inputS_array, MARGIN=c(2,3), max)
 Ultuna_min_Is<-apply(Ultuna_inputS_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_max_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_min_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_mean_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_Is)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
 
 Ultuna_mean_fluxS<-(colMeans(Ultuna_fluxS_array))
 Ultuna_max_fluxS<-apply(Ultuna_fluxS_array, MARGIN=c(2,3), max)
 Ultuna_min_fluxS<-apply(Ultuna_fluxS_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_max_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_min_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_mean_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_fluxS)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
 
 Ultuna_mean_fluxR<-(colMeans(Ultuna_fluxR_array))
 Ultuna_max_fluxR<-apply(Ultuna_fluxR_array, MARGIN=c(2,3), max)
 Ultuna_min_fluxR<-apply(Ultuna_fluxR_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_max_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
-rownames(Ultuna_min_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))
+rownames(Ultuna_mean_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_fluxR)<-as.factor(rownames(calib_data_Ultuna$SOC_Ultuna))[1:calib_data_Ultuna$J_Ultuna]
 
 
 #mean, min and max matrices by treatment
@@ -245,7 +291,7 @@ Ultuna_mean_fluxR_bytreat<-mat.or.vec(15,dim[2])
 Ultuna_max_fluxR_bytreat<-mat.or.vec(15,dim[2])
 Ultuna_min_fluxR_bytreat<-mat.or.vec(15,dim[2])
 Ultuna_measured_bytreat<-mat.or.vec(15,dim[2])
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   Ultuna_mean_predictions_bytreat[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_min_predictions_bytreat[i,]<-Ultuna_min_predictions[i,]
   Ultuna_max_predictions_bytreat[i,]<-Ultuna_max_predictions[i,]
@@ -299,7 +345,7 @@ write_ods(Ultuna_Is_table, "Ultuna_input_check.ods", sheet="Calculated shoot inp
 write_ods(Ultuna_Pred_table, "Ultuna_input_check.ods", sheet="Predicted SOC stocks (C,ton ha-1)", append=T, row_names = T)
 
 Ultuna_Thomas_Ir_table<-data.frame(mat.or.vec(15,54))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   Ultuna_Thomas_Ir_table[i,]<-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001
 }
 
@@ -311,7 +357,7 @@ write_ods(Ultuna_Thomas_Ir_table, "Ultuna_input_check.ods", sheet="Thomas calcul
 
 png("input_comparison.png", width=4000, height=4000, res=300)
 par(mfrow=c(4,4))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   plot(Ultuna_mean_Ir_bytreat[i,][1:54], type="l", col="darkorange", lwd=2, ylab="C Mg Ha-1", xlab="Year", main=paste("treatment", letters[i]), ylim=c(0,3))
   lines(as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001, col="darkgreen", lwd=2)
   if(i ==1){legend("topleft", c("me", "Thomas"), col=c("darkorange", "darkgreen"), bty="n", lty=c(1), cex=1.5)}
@@ -320,7 +366,7 @@ dev.off()
 
 png("input_difference_me_vs_Thomas.png", width=4000, height=4000, res=300)
 par(mfrow=c(4,4))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   barplot(Ultuna_mean_Ir_bytreat[i,][1:54]-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001, ylab="C Mg Ha-1", xlab="Year", main=paste("treatment", letters[i]), ylim=c(-2,2))
   text(9, 1.7, paste("mean : ", round(mean(Ultuna_mean_Ir_bytreat[i,][1:54]-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001, na.rm=T),3)))
 }
@@ -329,7 +375,7 @@ dev.off()
 
 png("input_difference_me_vs_Thomas_procent.png", width=4000, height=4000, res=300)
 par(mfrow=c(4,4))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   barplot(100*(Ultuna_mean_Ir_bytreat[i,][1:54]-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001)/mean(Ultuna_mean_Ir_bytreat[i,][1:54]), ylab="% difference", xlab="Year", main=paste("treatment", letters[i]), ylim=c(-200,200))
   text(18, 185, paste("mean difference : ", round(mean(Ultuna_mean_Ir_bytreat[i,][1:54]-as.numeric(Thomas_2011_inputs[Thomas_2011_inputs$treat==letters[i],]$`CR+CE70%`[1:54])*0.001, na.rm=T)/mean(Ultuna_mean_Ir_bytreat[i,][1:54]),2)*100, "%"))
 }
@@ -341,17 +387,17 @@ dev.off()
 
 png("ICBM_predictions_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_max_predictions_bytreat[i,],rev(Ultuna_min_predictions_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
   lines(yearseq, Ultuna_mean_predictions_bytreat[i,], col="black", lty=1, lwd=1)
   #lines(yearseq[2:62], na_interpolation(Ultuna_measured_bytreat[i,1:61]), col="firebrick", lty=2, lwd=2)
-  lines(yearseq[2:54], na_interpolation(Ultuna_measured_bytreat[i,1:53]), col=add.alpha("firebrick",0.2), lty=2, lwd=2)
-  points(yearseq[2:54], (Ultuna_measured_bytreat[i,1:53]), col="firebrick", lty=2, lwd=2)
+  #lines(yearseq, na_interpolation(Ultuna_measured_bytreat[i,1:53]), col=add.alpha("firebrick",0.2), lty=2, lwd=2)
+  points(yearseq, (Ultuna_measured_bytreat[i,]), col="firebrick", lty=2, lwd=2)
 }
 dev.off()
 
@@ -359,10 +405,10 @@ dev.off()
 
 png("ICBM_Ir_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_Ir_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_Ir_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_Ir_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_max_Ir_bytreat[i,],rev(Ultuna_min_Ir_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -372,10 +418,10 @@ dev.off()
 
 png("ICBM_Is_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_Is_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_Is_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_Is_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_max_Is_bytreat[i,],rev(Ultuna_min_Is_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -385,10 +431,10 @@ dev.off()
 
 png("ICBM_fluxS_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_fluxS_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_fluxS_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_fluxS_bytreat[i,], ylim=c(0,2), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_max_fluxS_bytreat[i,],rev(Ultuna_min_fluxS_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -398,10 +444,10 @@ dev.off()
 
 png("ICBM_fluxR_Ultuna_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_fluxR_bytreat)[2]-1
-  plot(yearseq, Ultuna_mean_fluxR_bytreat[i,], ylim=c(0.4,-0.5), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_fluxR_bytreat[i,], ylim=c(0.4,-0.5), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_max_fluxR_bytreat[i,],rev(Ultuna_min_fluxR_bytreat[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -429,15 +475,15 @@ for(j in 1:sampling.nr){
 Ultuna_mean_predictions<-(colMeans(Ultuna_prediction_array))
 Ultuna_max_predictions<-colmax<-apply(Ultuna_prediction_array, MARGIN=c(2,3), max)
 Ultuna_min_predictions<-colmax<-apply(Ultuna_prediction_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_predictions)<-LETTERS[1:15]
-rownames(Ultuna_max_predictions)<-LETTERS[1:15]
-rownames(Ultuna_min_predictions)<-LETTERS[1:15]
+rownames(Ultuna_mean_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
 
 #mean, min and max matrices by treatment
-Ultuna_mean_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
-Ultuna_max_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
-Ultuna_min_predictions_bytreat_Y<-mat.or.vec(15,dim[2])
-for(i in 1:15){
+Ultuna_mean_predictions_bytreat_Y<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+Ultuna_max_predictions_bytreat_Y<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+Ultuna_min_predictions_bytreat_Y<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   Ultuna_mean_predictions_bytreat_Y[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_max_predictions_bytreat_Y[i,]<-Ultuna_min_predictions[i,]
   Ultuna_min_predictions_bytreat_Y[i,]<-Ultuna_max_predictions[i,]
@@ -460,15 +506,15 @@ for(j in 1:sampling.nr){
 Ultuna_mean_predictions<-(colMeans(Ultuna_prediction_array))
 Ultuna_max_predictions<-colmax<-apply(Ultuna_prediction_array, MARGIN=c(2,3), max)
 Ultuna_min_predictions<-colmax<-apply(Ultuna_prediction_array, MARGIN=c(2,3), min)
-rownames(Ultuna_mean_predictions)<-LETTERS[1:15]
-rownames(Ultuna_max_predictions)<-LETTERS[1:15]
-rownames(Ultuna_min_predictions)<-LETTERS[1:15]
+rownames(Ultuna_mean_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_max_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
+rownames(Ultuna_min_predictions)<-LETTERS[1:calib_data_Ultuna$J_Ultuna]
 
 #mean, min and max matrices by treatment
-Ultuna_mean_predictions_bytreat_O<-mat.or.vec(15,dim[2])
-Ultuna_max_predictions_bytreat_O<-mat.or.vec(15,dim[2])
-Ultuna_min_predictions_bytreat_O<-mat.or.vec(15,dim[2])
-for(i in 1:15){
+Ultuna_mean_predictions_bytreat_O<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+Ultuna_max_predictions_bytreat_O<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+Ultuna_min_predictions_bytreat_O<-mat.or.vec(calib_data_Ultuna$J_Ultuna,dim[2])
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   Ultuna_mean_predictions_bytreat_O[i,]<-Ultuna_mean_predictions[i,]
   Ultuna_max_predictions_bytreat_O[i,]<-Ultuna_min_predictions[i,]
   Ultuna_min_predictions_bytreat_O[i,]<-Ultuna_max_predictions[i,]
@@ -476,10 +522,10 @@ for(i in 1:15){
 
 png("ICBM_predictions_Ultuna_O_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat_O)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat_O[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat_O[i,], ylim=c(20,125), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_min_predictions_bytreat_O[i,],rev(Ultuna_max_predictions_bytreat_O[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -489,10 +535,10 @@ dev.off()
 
 png("ICBM_predictions_Ultuna_Y_specific.png", height=4500, width=4000, res=320)
 par(mfrow=c(5,3))
-for(i in 1:15){
+for(i in 1:calib_data_Ultuna$J_Ultuna){
   yearseq<-seq(from=colnames(calib_data_Ultuna$SOC_Ultuna)[1], to=as.numeric(colnames(calib_data_Ultuna$SOC_Ultuna)[1])+dim[2]-1)
   lastyear<-dim(Ultuna_mean_predictions_bytreat_Y)[2]-1
-  plot(yearseq, Ultuna_mean_predictions_bytreat_Y[i,], ylim=c(0,6), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[i]), col=Ultuna_treat_palette[i])
+  plot(yearseq, Ultuna_mean_predictions_bytreat_Y[i,], ylim=c(0,6), type="l",  ylab=expression(paste("C (t ha" ^-1, ")")), xlab="Years", main=paste("Treatment", LETTERS[selection_treatments[i]]), col=Ultuna_treat_palette[i])
   polygon(c(yearseq,rev(yearseq)),
           c(Ultuna_min_predictions_bytreat_Y[i,],rev(Ultuna_max_predictions_bytreat_Y[i,])),
           col=Ultuna_treat_palette_alpha[i],border=Ultuna_treat_palette[i])
@@ -506,26 +552,31 @@ dev.off()
 
 ###Plot parameter posteriors
 
-parameters_palette_multi<-c("darkorange","cadetblue", "deepskyblue",
-                            "cornsilk4","darkgreen","chocolate4",
-                            "lightpink4","lightgoldenrod3","burlywood4","blueviolet","darkcyan",
-                            brewer.pal(6, "BuPu")[2:6])
+# parameters_palette_multi<-c("darkorange","cadetblue", 
+#                             "cornsilk4","darkgreen","darkorchid",
+#                             "lightpink4","goldenrod3","burlywood4","blueviolet","darkcyan",
+#                             brewer.pal(6, "BuPu")[2:6], "red")
+
+colors = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+set.seed(25)
+parameters_palette_multi=sample(colors, 15)
+pie(rep(1,15), col=parameters_palette_multi)
+
 parameters_palette_multi_alpha<-add.alpha(parameters_palette_multi,0.7)
 
 
 parameter_names<-c(expression(paste("k"[1])),
                    expression(paste("k"[2])),
-                   expression(paste("k"[2],"_org")),
                    expression(paste("h"[R])),
                    expression(paste("h"[S])),
                    expression(paste("h"[FYM])),
                    expression(paste("h"[PEAT])),
                    expression(paste("h"[SAW])),
                    expression(paste("h"[SLU])),
-                   "Exudates coefficient",
                    "Stubbles ratio",
                    "Stubbles ratio (maize)",
-                   "S:R cereals","S:R root crops","S:R oilseeds", "S:R maize")
+                   "S:R cereals","S:R root crops","S:R oilseeds", "S:R maize",
+                   "O/Y ratio")
 
 library(modeest)
 
@@ -534,40 +585,39 @@ library(modeest)
 library(truncnorm)
 ##Parameters
 
-error_h<-0.1
-limits_h<-0.3
+#error_h<-0.1
+limits_h<-0.5
+limits_k<-0.5
 
 #k1  <- rtruncnorm(5000, mean=0.8, sd=(0.8*0.05), a=0, b=3)
 #k1  <- runif(5000, min=0.78, max=1)
-k1  <- rnorm(5000,mean=0.6906054, sd=0.2225509)
-k2    <- rtruncnorm(5000, mean=0.00605, sd=(0.00605*error_h), a=0.00605-0.00605*0.5, b=0.00605+0.00605*0.5)
-k2_org    <- rtruncnorm(5000, mean=0.00605, sd=(0.00605*error_h), a=0.00605-0.00605*0.5, b=0.00605+0.00605*0.5)
+k1  <- runif(5000,0.8-0.8*limits_k, 0.8+0.8*limits_k)
+k2  <- runif(5000, min=0.00605-0.00605*limits_k, max=0.00605+0.00605*limits_k)
 
-h_S     <- rtruncnorm(5000, mean=0.15, sd=(0.15*error_h), a=0.15-0.15*limits_h, b=0.15+0.15*limits_h)
-h_R     <- rtruncnorm(5000, mean=0.35, sd=(0.35*error_h), a=0.35-0.35*limits_h, b=0.35+0.35*limits_h)
-h_FYM   <- rtruncnorm(5000, mean=0.27, sd=(0.27*error_h), a=0.27-limits_h, b=0.27+limits_h)
-h_PEA   <- rtruncnorm(5000, mean=0.59, sd=(0.59*error_h), a=0.59-limits_h, b=0.59+limits_h)
-h_SAW   <- rtruncnorm(5000, mean=0.25, sd=(0.25*error_h), a=0.25-limits_h, b=0.25+limits_h)
-h_SLU   <- rtruncnorm(5000, mean=0.41, sd=(0.41*error_h), a=0.41-limits_h, b=0.41+limits_h)
+h_S     <- runif(5000, min=0.125-0.125*limits_h, max=0.125+0.125*limits_h)
+h_R     <- runif(5000, min=0.35-0.35*limits_h, max=0.35+0.35*limits_h)
+h_FYM   <- runif(5000,  min=0.27-0.27*limits_h, max=0.27+0.27*limits_h)
+h_PEA   <- runif(5000,  min=0.59-0.59*limits_h, max=0.59+0.59*limits_h)
+h_SAW   <- runif(5000,  min=0.25-0.25*limits_h, max=0.25+0.25*limits_h)
+h_SLU   <- runif(5000,  min=0.41-0.41*limits_h, max=0.41+0.41*limits_h)
 
-stubbles_ratio_Ultuna <- rtruncnorm(5000, mean=0.04, sd=0.01, a=0.001, b=0.08)
-stubbles_ratio_Ultuna_maize <- rtruncnorm(5000, mean=0.04, sd=0.01, a=0.001, b=0.08)
-
+stubbles_ratio_Ultuna <- runif(5000, 0.01,0.08)
+stubbles_ratio_Ultuna_maize <-  runif(5000, 0.01,0.08)
 # Init_ratio_Ultuna <- rtruncnorm(5000, mean=0.9291667, sd=0.0001, a=0.9, b=0.95)
 # Init_ratio_Lanna <- rtruncnorm(5000, mean=0.9291667, sd=0.0001, a=0.9, b=0.95)
-exudates_coeff <- rtruncnorm(5000, mean=1.65, sd=1.65*0.1, a=1.65*0.95, b=1.65*1.05)
+#exudates_coeff <- rtruncnorm(5000, mean=1.65, sd=1.65*0.1, a=1.65*0.95, b=1.65*1.05)
 
 #root/shoot ratios priors
 error_SR<-0.25
-#SR_cereals    <- runif(5000, min=11-11*error_SR, max=11+11*error_SR)
-#SR_root_crops <- runif(5000, min=30-30*error_SR, max=30+30*error_SR)
-#SR_oilseeds   <- runif(5000, min=8-8*error_SR, max=8+8*error_SR)
-#SR_maize   <- runif(5000, min=6.25-6.25*error_SR, max=6.25+6.25*error_SR)
+limit_SR<-0.5
 
-SR_cereals    <- rtruncnorm(5000, mean=11, sd=(11*error_SR), a=11-+11*error_SR, b=11+11*error_SR)
-SR_root_crops <- rtruncnorm(5000, mean=30, sd=30*error_SR, a=30-30*error_SR, b=30+30*error_SR)
-SR_oilseeds   <- rtruncnorm(5000, mean=8, sd=8*error_SR, a=8-8*error_SR, b=8+8*error_SR)
-SR_maize   <- rtruncnorm(5000, mean=6.25, sd=6.25*error_SR, a=6.25-6.25*error_SR, b=6.25+6.25*error_SR)
+SR_cereals    <- runif(5000, 11-11*limit_SR,11+11*limit_SR)
+SR_root_crops <- runif(5000, 29.49853-29.49853*limit_SR,29.49853+29.49853*limit_SR)
+SR_oilseeds   <- runif(5000, 8-8*limit_SR,8+8*limit_SR)
+SR_maize   <- runif(5000, 6.25-6.25*limit_SR,6.25+6.25*limit_SR)
+
+
+Init_ratio_Ultuna   <- runif(5000,  min=0.8, max=0.98)
 
 
 ##Parameters
@@ -578,20 +628,21 @@ rownames(parameter_values)<-parameter_list[1:29]
 
 priors_list<-list(k1, #                           1
                   k2, #                           2
-                  k2_org, #                       3
+                 #k2_org, #                       3
                   h_R, #                          4
                   h_S, #                          5
                   h_FYM, #                        6
                   h_PEA, #                        7
                   h_SAW, #                        8
                   h_SLU, #                        9
-                  exudates_coeff, #               10
-                  stubbles_ratio_Ultuna, #        11
-                  stubbles_ratio_Ultuna_maize, #  12
-                  SR_cereals, #                   13
-                  SR_root_crops, #                14
-                  SR_oilseeds, #                  15
-                  SR_maize) #                     16
+                  #exudates_coeff, #              10
+                  stubbles_ratio_Ultuna, #        10
+                  stubbles_ratio_Ultuna_maize, #  11
+                  SR_cereals, #                   12
+                  SR_root_crops, #                13
+                  SR_oilseeds, #                  14
+                  SR_maize,#                      15
+                 Init_ratio_Ultuna) #             16
 
 priors_list_d<-list()
 for(i in 1:length(priors_list)){priors_list_d[[i]]<-density(priors_list[[i]])}
@@ -600,7 +651,7 @@ MCMC_list_multisite<-list()
 density_list_multisite<-list()
 params_mode_multisite<-c()
 params_meam_multisite<-c()
-for(i in 1:(length(parameter_list[1:21]))){
+for(i in 1:(length(parameter_list))){
   chain_list_multisite[[i]]<-as.mcmc.list(eval(parse(text=paste("mcmc.array.ICBM.Ultuna","$",parameter_list[i], sep=""))), chains=T)
   density_list_multisite[[i]]<-density(as.matrix(chain_list_multisite[[i]][1]))
   params_mode_multisite[i]<-mlv(as.matrix(chain_list_multisite[[i]][1]), method="Parzen")
@@ -627,7 +678,7 @@ palette_Ult_Lan<-add.alpha(c("Firebrick", "Darkgreen"),0.5)
 
 
 
-png("ICBM_posteriors_multisite_specific.png", height=3000, width=4000, res=300)
+jpeg("ICBM_posteriors_multisite_specific.jpg", height=2600, width=4000, res=300)
 par(mfrow=c(3,5))
 
 i=1
@@ -642,7 +693,7 @@ range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_
   if(i==1){legend("topright", c("Ultuna", "Prior"), bty="n", pch=c(16),  col=c(add.alpha(parameters_palette_multi[i],0.8), add.alpha("lightgrey", 0.6)))}
 
 i=2
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_d[[i]]$x), density_list_multisite[[i+1]]$x)
+range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_d[[i]]$x))
 mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
 rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
 meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
@@ -650,147 +701,8 @@ meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
 plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
 polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
 polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-polygon(density_list_multisite[[i+1]], col=add.alpha(parameters_palette_multi[i+1],0.8))
-polygon(priors_list_d[[i+1]], col=add.alpha("lightgrey", 0.6), lty=2)
-legend("topleft", c("others", "peat/sludge"), bty="n", pch=c(16),  col=c(add.alpha(parameters_palette_multi[c(i, i+1)],0.8), add.alpha("lightgrey", 0.6)))
+if(i==1){legend("topright", c("Ultuna", "Prior"), bty="n", pch=c(16),  col=c(add.alpha(parameters_palette_multi[i],0.8), add.alpha("lightgrey", 0.6)))}
 
-
-
-#H_r
-i=4
-parameter_list[c(i, i+6)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-
-#H_s
-i=5
-parameter_list[c(i, i+6)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y,priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-
-#H_FYM
-i=6
-parameter_list[c(i, i+6)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x,priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-
-#H_PEA
-i=7
-parameter_list[c(i, i+6)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-#H_SAW
-i=8
-parameter_list[c(i, i+6)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-#H_SLU
-i=9
-parameter_list[c(i, i+4)]
-range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x,priors_list_d[[i]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y,priors_list_d[[i]]$y))
-meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-
-#ex. coefficient
-range<-range(c(density_list_multisite[[10]]$x, priors_list_d[[10]]$x))
-rangey<-range(c(density_list_multisite[[10]]$y, priors_list_d[[10]]$y))
-plot(density_list_multisite[[10]], main=parameter_names[9],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-polygon(density_list_multisite[[10]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[10]], col=add.alpha("lightgrey", 0.6), lty=2)
-
-#stubbles ratio
-range<-range(c(density_list_multisite[[11]]$x, priors_list_d[[11]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[11]]$x))
-rangey<-range(c(density_list_multisite[[11]]$y, priors_list_d[[11]]$y))
-plot(density_list_multisite[[11]], main=parameter_names[10],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-polygon(density_list_multisite[[11]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[11]], col=add.alpha("lightgrey", 0.1), lty=2)
-
-#stubbles ratio maize
-range<-range(c(density_list_multisite[[12]]$x, priors_list_d[[12]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[12]]$x))
-rangey<-range(c(density_list_multisite[[12]]$y, priors_list_d[[12]]$y))
-plot(density_list_multisite[[12]], main=parameter_names[11],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-polygon(density_list_multisite[[12]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[12]], col=add.alpha("lightgrey", 0.1), lty=2)
-
-
-for(i in 13:16){
-  range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-  mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-  rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-  meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-  plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-  polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-  polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-}
-
-
-dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-png("ICBM_posteriors_multisite_specific_portrait.png", height=4000, width=3000, res=330)
-par(mfrow=c(5,3))
-
-for(i in 1:2){
-  range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x, priors_list_d[[i]]$x))
-  mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
-  rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
-  meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
-
-  plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-  polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
-  polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
-  if(i==1){legend("topright", c("Ultuna", "Prior"), bty="n", pch=c(21),  col=c(add.alpha(parameters_palette_multi[i],0.8), add.alpha("lightgrey", 0.6)))}
-}
 
 
 #H_r
@@ -819,7 +731,7 @@ polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 #H_FYM
 i=5
-parameter_list[c(i, i+6)]
+parameter_list[i]
 range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x,priors_list_d[[i]]$x))
 mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
 rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y, priors_list_d[[i]]$y))
@@ -831,13 +743,13 @@ polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 #H_PEA
 i=6
-parameter_list[c(i, i+6)]
+parameter_list[c(i)]
 range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
 mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
 rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
 meany<-mean(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
 plot(density_list_multisite[[i]], main=parameter_names[i],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)), col=NA)
-polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8))
+polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0.8)) #col=add.alpha("lightgrey", 0.6))
 polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 #H_SAW
@@ -863,34 +775,26 @@ polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[i],0
 polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 
-#ex. coefficient
+#stubbles ratio
+i=9
 range<-range(c(density_list_multisite[[9]]$x, priors_list_d[[9]]$x))
+mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[9]]$x))
 rangey<-range(c(density_list_multisite[[9]]$y, priors_list_d[[9]]$y))
 plot(density_list_multisite[[9]], main=parameter_names[9],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
 polygon(density_list_multisite[[9]], col=add.alpha(parameters_palette_multi[i],0.8))
 polygon(priors_list_d[[9]], col=add.alpha("lightgrey", 0.6), lty=2)
 
-#stubbles ratio
+#stubbles ratio maize
+i=10
 range<-range(c(density_list_multisite[[10]]$x, priors_list_d[[10]]$x))
 mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[10]]$x))
 rangey<-range(c(density_list_multisite[[10]]$y, priors_list_d[[10]]$y))
 plot(density_list_multisite[[10]], main=parameter_names[10],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
 polygon(density_list_multisite[[10]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[10]], col=add.alpha("lightgrey", 0.1), lty=2)
+polygon(priors_list_d[[10]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 
-#stubbles ratio maize
-range<-range(c(density_list_multisite[[11]]$x, priors_list_d[[11]]$x))
-mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[11]]$x))
-rangey<-range(c(density_list_multisite[[11]]$y, priors_list_d[[11]]$y))
-plot(density_list_multisite[[11]], main=parameter_names[11],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
-polygon(density_list_multisite[[11]], col=add.alpha(parameters_palette_multi[i],0.8))
-polygon(priors_list_d[[11]], col=add.alpha("lightgrey", 0.1), lty=2)
-
-
-
-
-for(i in 12:15){
+for(i in 11:14){
   range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[i]]$x))
   rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[i]]$y))
@@ -900,10 +804,32 @@ for(i in 12:15){
   polygon(priors_list_d[[i]], col=add.alpha("lightgrey", 0.6), lty=2)
 }
 
-
+#init
+i=23
+range<-range(c(density_list_multisite[[i]]$x, priors_list_d[[15]]$x))
+mean<-mean(c(density_list_multisite[[i]]$x, priors_list_d[[15]]$x))
+rangey<-range(c(density_list_multisite[[i]]$y, priors_list_d[[15]]$y))
+plot(density_list_multisite[[i]], main=parameter_names[15],xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
+polygon(density_list_multisite[[i]], col=add.alpha(parameters_palette_multi[15],0.8))
+polygon(priors_list_d[[15]], col=add.alpha("lightgrey", 0.6), lty=2)
 
 dev.off()
 
+
+
+jpeg("ICBM_posteriors_multisite_specific_allometry.jpg", height=1200, width=1200, res=300)
+
+alpha  <- runif(5000,  min=0, max=5)
+i=24
+range<-range(c(density_list_multisite[[i]]$x, density(alpha)$x))
+mean<-mean(c(density_list_multisite[[i]]$x,  density(alpha)$x))
+rangey<-range(c(density_list_multisite[[i]]$y,  density(alpha)$y))
+plot(density_list_multisite[[i]], main=expression(alpha),xlim=c(range[1]-(range[1]*0.015), range[2]+(range[2]*0.015)), ylim=c(0, rangey[2]+(rangey[2]*0.2)))
+polygon(density_list_multisite[[i]], col=add.alpha("darkorange",0.6))
+polygon(density_list_multisite[[1+i]], col=add.alpha("chartreuse2",0.6))
+polygon(density(alpha), col=add.alpha("lightgrey", 0.6), lty=2)
+legend("topright", c("maize", "other crops"), bty="n", pch=16, col=add.alpha(c("chartreuse2","darkorange"), 0.6))
+dev.off()
 
 
 #residuals
@@ -921,8 +847,8 @@ residuals_type[!calib_data_Ultuna$Yields_maize_Ultuna==0]="Maize"
 
 png("residuals.png", width = 5000, height=4000, res=300)
 par(mfrow=c(5,3))
-for(i in 1:15){
-plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[i]), pch=16, ylim=range(residuals, na.rm=T))
+for(i in 1:calib_data_Ultuna$J_Ultuna){
+plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[selection_treatments[i]]), pch=16, ylim=range(residuals, na.rm=T))
 axis(1, at=seq(1, length(residuals_type)), labels= residuals_type[i,], las=2, cex.axis=0.5)
 axis(2) #default way
 abline(h=0, lty=2)
@@ -933,8 +859,8 @@ dev.off()
 
 png("residuals_freescale.png", width = 5000, height=4000, res=300)
 par(mfrow=c(5,3))
-for(i in 1:15){
-  plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[i]), pch=16)
+for(i in 1:calib_data_Ultuna$J_Ultuna){
+  plot(residuals[i,], axes=FALSE, ylab="mean residuals", xlab="", main=paste("Treatment", LETTERS[selection_treatments[i]]), pch=16)
   axis(1, at=seq(1, length(residuals_type)), labels= residuals_type[i,], las=2, cex.axis=0.5)
   axis(2) #default way
   abline(h=0, lty=2)
@@ -943,17 +869,41 @@ for(i in 1:15){
 dev.off()
 
 png("residuals_mean.png", width = 2000, height=2000, res=300)
-barplot(rowMeans(residuals, na.rm=T))
+barplot(rowMeans(residuals, na.rm=T)[1:calib_data_Ultuna$J_Ultuna])
 dev.off()
+
+
+#functio to find the p-value of a regression
+lmp <- function (modelobject) {
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
+}
+
+
 
 png("residuals_scatterplots.png", width = 4000, height=2000, res=300)
 par(mfrow=c(1,2))
-yields<-(calib_data_Ultuna$Yields_cereals_Ultuna+calib_data_Ultuna$Yields_root_crops_Ultuna+calib_data_Ultuna$Yields_oilseeds_Ultuna+calib_data_Ultuna$Yields_maize_Ultuna)
-plot(unlist(yields),unlist(residuals), main="Residuals vs yields", col=Ultuna_crop_palette[as.numeric(as.factor(unlist(residuals_type)))], pch=as.numeric(as.factor(unlist(residuals_type))), xlab="Yields", ylab="Residuals")
-legend("bottomright", levels(as.factor(unlist(residuals_type))), pch=seq(1,4), col = Ultuna_crop_palette, bty="n")
+yields<-(calib_data_Ultuna$Yields_cereals_Ultuna[1:calib_data_Ultuna$J,]+calib_data_Ultuna$Yields_root_crops_Ultuna[1:calib_data_Ultuna$J,]+calib_data_Ultuna$Yields_oilseeds_Ultuna[1:calib_data_Ultuna$J,]+calib_data_Ultuna$Yields_maize_Ultuna[1:calib_data_Ultuna$J,])
+plot(unlist(yields),unlist(residuals[1:calib_data_Ultuna$J,]), main="Residuals vs yields", 
+     col=Ultuna_crop_palette[as.numeric(as.factor(unlist(residuals_type[1:calib_data_Ultuna$J,])))], pch=as.numeric(as.factor(unlist(residuals_type[1:calib_data_Ultuna$J,]))), xlab="Yields", ylab="Residuals")
+legend("bottomright", levels(as.factor(unlist(residuals_type[1:calib_data_Ultuna$J,]))), pch=seq(1,4), col = Ultuna_crop_palette, bty="n")
+abline(h=0, lty=2)
 
-plot(unlist(calib_data_Ultuna$re_Ultuna),unlist(residuals), main="Residuals vs reclim", col=Ultuna_crop_palette[as.numeric(as.factor(unlist(residuals_type)))], pch=as.numeric(as.factor(unlist(residuals_type))), xlab="reclim", ylab="Residuals")
+regr_1st_term<-(unlist(yields))
+regr_2nd_term<-(unlist(residuals[1:calib_data_Ultuna$J,]))
+regr<-lm(as.vector(regr_2nd_term)~regr_1st_term )
+abline(regr, lty=1, col="darkgrey")
+legend("topleft", c(paste("R2=",round(summary(regr)$r.squared,2)),
+                    paste("p=",round(lmp(regr),10))), bty="n")
+
+
+plot(unlist(calib_data_Ultuna$re_Ultuna[1:calib_data_Ultuna$J,]),unlist(residuals[1:calib_data_Ultuna$J,]), main="Residuals vs reclim", col=Ultuna_crop_palette[as.numeric(as.factor(unlist(residuals_type[1:calib_data_Ultuna$J,])))], pch=as.numeric(as.factor(unlist(residuals_type[1:calib_data_Ultuna$J,]))), xlab="reclim", ylab="Residuals")
 legend("bottomright", levels(as.factor(unlist(residuals_type))), pch=seq(1,4), col = Ultuna_crop_palette, bty="n")
+abline(h=0, lty=2)
+
 dev.off()
 
 

@@ -14,7 +14,7 @@ model{
     Y_STR_Ultuna[j,1]<-0
     O_Ultuna[j,1]  <-SOC_init_Ultuna[j]*Init_ratio_Ultuna
 
-    k2_treat[j]<- ifelse(j==9 || j==13 || j==15, k2_ult_or, k2_ult)
+    k2_treat[j]<- k2_ult #ifelse(j==9 || j==13 || j==15, k2_ult_or, k2_ult)
 
     for (i in 1:(N_Ultuna)){
 
@@ -42,7 +42,7 @@ model{
       fluxR_Ultuna[j,i] 		  <-  h_R_ult*((k1_ult*(Y_R_Ultuna[j,i]+I_R_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
       fluxS_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_S_Ultuna[j,i]+I_S_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
 
-      #old flux manure
+      #old flux
       flux_FYM_Ultuna[j,i] 		  <-  h_FYM_ult*((k1_ult*(Y_FYM_Ultuna[j,i]+I_FYM_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
       flux_GM_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_GM_Ultuna[j,i]+I_GM_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
       flux_PEA_Ultuna[j,i] 		  <-  h_PEA_ult*((k1_ult*(Y_PEA_Ultuna[j,i]+I_PEA_Ultuna[j,i]))/(k2_treat[j]-k1_ult))
@@ -91,8 +91,7 @@ model{
   #k1_ult    ~ dunif(0.78, 1)
   k1_ult    ~ dnorm(0.6906054, 1/0.2225509)
   k2_ult    ~ dnorm(0.00605, 1/(0.00605*error_h))#  T(0.00605-0.00605*limits_k2,0.00605+0.00605*limits_k2)
-  k2_ult_or    ~ dnorm(0.00605, 1/(0.00605*error_h))#  T(0.00605-0.00605*limits_k2,0.00605+0.00605*limits_k2)
-  
+
   h_S_ult     ~ dnorm(0.125,1/(0.15*error_h)) T(0.125-0.125*limits_h,0.125+0.125*limits_h)
   h_R_ult     ~ dnorm(0.35,1/(0.35*error_h)) T(0.35-0.35*limits_h, 0.35+0.35*limits_h)
   h_FYM_ult   ~ dnorm(0.27,1/(0.27*error_h)) T(0.27-0.27*limits_h,0.27+0.27+limits_h)
@@ -102,7 +101,7 @@ model{
 
   #root/shoot ratios priors
   SR_cereals_ult    ~ dnorm(11, 1/(11*error_SR)) T(11-11*limit_SR,11+11*limit_SR)
-  SR_root_crops_ult ~ dnorm(29.49853, 1/(29.49853*limit_SR)) T(29.49853-29.49853*error_SR,29.49853+29.49853*limit_SR)
+  SR_root_crops_ult ~ dnorm(29.49853, 1/(29.49853*limit_SR)) T(-29.49853*error_SR,29.49853+29.49853*limit_SR)
   SR_oilseeds_ult   ~ dnorm(8, 1/(8*error_SR)) T(8-8*limit_SR,8+8*limit_SR)
   SR_maize_ult      ~ dnorm(6.25, 1/(6.25*error_SR)) T(6.25-6.25*limit_SR,6.25+6.25*limit_SR)
 
@@ -119,7 +118,7 @@ model{
 
   error_h<-0.1
   limits_h<-0.3
-  limits_k2<-0.5
+  #limits_k2<-0.5
   error_SR<-0.25
   limit_SR<-0.5
   
