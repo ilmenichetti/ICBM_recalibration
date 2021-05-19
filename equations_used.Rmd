@@ -1,0 +1,207 @@
+---
+title: "Documented ICBM recalibration equations"
+output:
+  pdf_document: default
+  word_document: default
+classoption: landscape
+papersize: a4
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+In this document I describe the JAGS model file used in the ICBM recalibration. 
+
+As a doubleck, the code is shown here. This is exactly the file currently used by the model (the following code chunk is produced with a relative link).
+**Please consider this just for documentation, and skip to the end of it, where the code is described in detail with mathematical notation.**
+
+```{r, code=xfun::read_utf8('JAGS_ICBM_3.1_Ultuna_multitreat_9treat_unif.R'), attr.source='.numberLines', size="tiny", tidy: (TRUE)}
+```
+
+
+The model starts with a loop for each treatment 
+```{r eval=FALSE}
+for(j in 1:J_Ultuna){  
+```
+Where the index "j" is updated for each of the treatments considered in that calibration. Inside this loop there is another loop, nested, that runs for each simulation year "n"
+```{r eval=FALSE}   
+  for (i in 1:(N_Ultuna)){
+``` 
+
+
+\section{Inputs (lines 24 to 38)}
+
+The two ifelses
+```{r eval=FALSE}   
+    alpha_1[j,i]=ifelse(j==1, 0, alpha) 
+    alpha_maize_1[j,i]=ifelse(j==1, 0, alpha_maize) 
+``` 
+are for not using the intercept $\alpha$ when considering the bare fallow. Please note that $\alpha$ is in some calibrations anyway set to zero. 
+
+
+
+Root inputs are calculated for each year and for each crop type (line 28 to 36). 
+Since the input matrix has zero for each crop that was not that year crop, the sum correspond to the crop of that year. 
+\begin{equation}
+I_{R (c,t)}=(1+\rho) \cdot \epsilon_d \cdot z \cdot \theta \cdot (\alpha \cdot A_{cr} \cdot \frac{1}{S:R_s})
+\end{equation}
+
+Where:
+$\rho$=exudates coefficient 
+$\epsilon_d$= error term ("e_depth_" in the code) 
+$z_{cr}$= the fraction of roots at 20 cm depth (Fan et al., 2016) 
+$\theta$= C concentration 
+$\alpha$= the intercept (in some calibrations it is set to zero) 
+$A_{cr}$= aboveground biomass 
+$S:R$= Shoot to root ratio 
+$cr$=crop 
+$t$= year 
+We then sum all the crops for each year 
+\begin{equation}
+I_{R(t)}=\sum_{1...s}I_{R (s,t)} 
+\end{equation}
+With the code:
+```{r eval=FALSE}   
+      I_R_Ultuna[j,i]              <-  I_R_cereals_Ultuna[j,i]+I_R_root_crops_Ultuna[j,i]+I_R_oilseeds_Ultuna[j,i]+I_R_maize_Ultuna[j,i]
+```
+
+
+Shoot inputs are calculated with the stubbles ratio $\xi$:
+\begin{equation}
+I_{S (s,t)}= A_s \cdot \xi \cdot \theta 
+\end{equation}
+With the code:
+```{r eval=FALSE}   
+ ((Yields_cereals_Ultuna[j,i]+Yields_root_crops_Ultuna[j,i]+Yields_oilseeds_Ultuna[j,i])*
+                                                  stubbles_ratio_Ultuna+Yields_maize_Ultuna[j,i]*stubbles_ratio_Ultuna_maize)*C_percent
+```
+
+Amdendment inputs ($I_{n (t)}$) are taken directly as mass of C. Each input is then brought forward in a specific Young pool
+
+\section{Young pool}
+Each material (roots, shoots, different amendments, all denoted by $m$) decays into more fine organic matter during the year:
+\begin{equation}
+Y_{m(t+1)}=\left( I_{m (t)}+Y_{n(t)} \right) \cdot e^{-k \cdot r_e}
+\end{equation}
+This is repeated for roots, shoots and each of the amendments. In each of the treatments we calculate all these pools, which are just equal to zero in treatments with no inputs in that class:
+```{r eval=FALSE}   
+      Y_R_Ultuna[j,i+1] 		<-  (I_R_Ultuna[j,i]+Y_R_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_S_Ultuna[j,i+1] 		<-  (I_S_Ultuna[j,i]+Y_S_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      
+      Y_FYM_Ultuna[j,i+1] 		<-  (I_FYM_Ultuna[j,i]+Y_FYM_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_GM_Ultuna[j,i+1] 		  <-  (I_GM_Ultuna[j,i]+Y_GM_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_PEA_Ultuna[j,i+1] 		<-  (I_PEA_Ultuna[j,i]+Y_PEA_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_SAW_Ultuna[j,i+1] 		<-  (I_SAW_Ultuna[j,i]+Y_SAW_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_SLU_Ultuna[j,i+1] 		<-  (I_SLU_Ultuna[j,i]+Y_SLU_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+      Y_STR_Ultuna[j,i+1] 		<-  (I_STR_Ultuna[j,i]+Y_STR_Ultuna[j,i])*exp(-k1_ult*re_Ultuna[j,i])
+```
+  
+
+
+\section{Fluxes}
+Each year we also have a flux from each Young pool to the Old (humified) pool:
+\begin{equation}
+\Phi_{n(t)}=h_m \cdot \frac{k_1 \cdot \left( I_{m (t)}+Y_{m(t)} \right)}{ k_2-k_1 }
+\end{equation}
+
+This is also repeated for roots, shoots and each of the amendments. In each of the treatments we calculate also all these fluxes, which are just equal to zero in treatments with no inputs in that class:
+
+```{r eval=FALSE}   
+      fluxR_Ultuna[j,i] 		  <-  h_R_ult*((k1_ult*(Y_R_Ultuna[j,i]+I_R_Ultuna[j,i]))/(k2_ult-k1_ult))
+      fluxS_Ultuna[j,i] 		  <-  h_S_ult*((k1_ult*(Y_S_Ultuna[j,i]+I_S_Ultuna[j,i]))/(k2_ult-k1_ult))
+
+      flux_FYM_Ultuna[j,i] 		  <-  h_FYM_ult *((k1_ult*(Y_FYM_Ultuna[j,i]+I_FYM_Ultuna[j,i]))/(k2_ult-k1_ult))
+      flux_GM_Ultuna[j,i] 		  <-  h_S_ult   *((k1_ult*(Y_GM_Ultuna[j,i] +I_GM_Ultuna[j,i])) /(k2_ult-k1_ult))
+      flux_PEA_Ultuna[j,i] 		  <-  h_PEA_ult *((k1_ult*(Y_PEA_Ultuna[j,i]+I_PEA_Ultuna[j,i]))/(k2_ult-k1_ult))
+      flux_SAW_Ultuna[j,i] 		  <-  h_SAW_ult *((k1_ult*(Y_SAW_Ultuna[j,i]+I_SAW_Ultuna[j,i]))/(k2_ult-k1_ult))
+      flux_SLU_Ultuna[j,i] 		  <-  h_SLU_ult *((k1_ult*(Y_SLU_Ultuna[j,i]+I_SLU_Ultuna[j,i]))/(k2_ult-k1_ult))
+      flux_STR_Ultuna[j,i] 		  <-  h_S_ult   *((k1_ult*(Y_STR_Ultuna[j,i]+I_STR_Ultuna[j,i]))/(k2_ult-k1_ult))
+      
+```
+**Note that, while the Y pool is calculated each year for the following year, the fluxes $\phi$ are calculated for the current year.**
+
+Fluxes are summed all together as 
+\begin{equation}
+\Phi = \sum_{1...m} \left( \phi_{m(t)} \right)
+\end{equation}
+
+Which translates in the code as:
+
+```{r eval=FALSE}   
+
+      flux_sum_Ultuna[j,i]<-(fluxR_Ultuna[j,i]+
+                               fluxS_Ultuna[j,i]+
+                               flux_FYM_Ultuna[j,i]+
+                               flux_GM_Ultuna[j,i]+
+                               flux_PEA_Ultuna[j,i]+
+                               flux_SAW_Ultuna[j,i]+
+                               flux_SLU_Ultuna[j,i]+
+                               flux_STR_Ultuna[j,i])
+```
+
+\section{Humified pool}
+All the fluxes are used to calculate the Old pool:
+\begin{equation}
+O_{(t+1)}= \left(O_{(t)}- \Phi  \right)  \cdot e^{-k_2 r_e}+
+\Phi \cdot e^{-k_1 r_e} 
+\end{equation}
+Which corresponds int he code to:
+```{r eval=FALSE}   
+      O_Ultuna[j,i+1]   	<-  (O_Ultuna[j,i]-flux_sum_Ultuna[j,i])*exp(-k2_ult*re_Ultuna[j,i]) + 
+                                    flux_sum_Ultuna[j,i]*exp(-k1_ult*re_Ultuna[j,i])
+```
+
+
+
+
+\section{Total C}
+Total C is calculated by summing up together all the Young pools with the Old pool at each time step:
+
+
+\begin{equation}
+SOC_{(t)}= 
+\sum_{1...n} \left(Y_{n(t)} \right) + O_{(t)}
+\end{equation}
+In the code this is achieved by first summing up together the Young pools and then adding the old pool
+```{r eval=FALSE}   
+      #Total C
+      Y_tot_Ultuna[j,i] <- Y_R_Ultuna[j,i] +
+                            Y_S_Ultuna[j,i] +
+                            Y_FYM_Ultuna[j,i] +
+                            Y_GM_Ultuna[j,i] +
+                            Y_PEA_Ultuna[j,i] +
+                            Y_SAW_Ultuna[j,i] +
+                            Y_SLU_Ultuna[j,i] +
+                            Y_STR_Ultuna[j,i]
+      
+      Tot_Ultuna[j,i] <- Y_tot_Ultuna[j,i] + O_Ultuna[j,i]
+```
+
+
+\section{Comparing with the results}
+The simulation ("Tot_Ultuna") is then compared with the measured values ("SOC_Ultuna"). Of course this is done each loop step for the ith (year) and jth (treatment) positions. 
+The error in each point is estimated as the error of each measured time series (so the error of a linear regression on that specific time series), increasef by 50% for additional safety.
+\begin{equation}
+SOC_{measured} \sim \mathcal{N}(SOC_{simulated}, 1.5\sigma_{SOC_{measured}})
+\end{equation}
+
+In the code this is rendered as:
+```{r eval=FALSE}   
+      SOC_Ultuna[j,i]  ~ dnorm(Tot_Ultuna[j,i],1/(error_SOC_Ultuna[j]*1.5))
+```
+Please notice that JAGS uses precision and not error for the normal distribution, hence the error is expressed as $\frac{1}{\sigma}$. The distribution is here assumed as gaussian (maybe uniform would be more conservative)
+
+
+\section{The priors}
+Outside the two loops, after line 97, all priors are specified.
+The JAGS syntax is pretty intuitive in this sense. The uniform distribution has as parameters just minimum and maximum:
+```{r eval=FALSE}   
+      param  ~ dunif(min, max)
+```
+While the normal distribution:
+```{r eval=FALSE}   
+      param  ~ dnorm(mean, precision)
+```
