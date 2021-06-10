@@ -25,13 +25,13 @@ model{
       #depth coefficients from: Fan, J., McConkey, B., Wang, H., & Janzen, H. (2016). Root distribution by depth for 
       #temperate agricultural crops. 
       #Field Crops Research, 189, 68–74. https://doi.org/10.1016/j.fcr.2016.02.013
-      I_R_cereals_Ultuna[j,i]      <-  (1+exudates_coeff)*e_depth_cer*0.5560437*C_percent*
+      I_R_cereals_Ultuna[j,i]      <-  (1+exudates_coeff)*0.5560437*C_percent*
                                                   ((alpha_1[j,i]+Yields_cereals_Ultuna[j,i])*(1/(SR_cereals_ult)))
-      I_R_root_crops_Ultuna[j,i]   <-  (1+exudates_coeff)*e_depth_root*0.5902446*0.32*C_percent*
+      I_R_root_crops_Ultuna[j,i]   <-  (1+exudates_coeff)*0.5902446*0.32*C_percent*
                                                   ((alpha_1[j,i]+Yields_root_crops_Ultuna[j,i])*(1/(SR_root_crops_ult)))#SR_root_crops_ult))
-      I_R_oilseeds_Ultuna[j,i]     <-  (1+exudates_coeff)*e_depth_oil*0.6367459*C_percent*
+      I_R_oilseeds_Ultuna[j,i]     <-  (1+exudates_coeff)*0.6367459*C_percent*
                                                   ((alpha_1[j,i]+Yields_oilseeds_Ultuna[j,i])*(1/(SR_oilseeds_ult)))#SR_oilseeds_ult))
-      I_R_maize_Ultuna[j,i]        <-  (1+exudates_coeff)*e_depth_maize*0.5981638*C_percent*
+      I_R_maize_Ultuna[j,i]        <-  (1+exudates_coeff)*0.5981638*C_percent*
                                                   ((alpha_maize_1[j,i]+Yields_maize_Ultuna[j,i])*(1/(SR_maize_ult)))#SR_maize_ult))
       I_R_Ultuna[j,i]              <-  I_R_cereals_Ultuna[j,i]+I_R_root_crops_Ultuna[j,i]+I_R_oilseeds_Ultuna[j,i]+I_R_maize_Ultuna[j,i]
       #Inputs S
@@ -86,16 +86,14 @@ model{
                             Y_SLU_Ultuna[j,i] +
                             Y_STR_Ultuna[j,i]
       
-      Tot_Ultuna[j,i] <- Y_tot_Ultuna[j,i] + O_Ultuna[j,i]
+      Tot_Ultuna[j,i] <- Y_tot_Ultuna[j,i] + O_Ultuna[j,i] + R_Ultuna
       
-      #Error of the measurement (assumed proportional to the measurement)
+      #Error of the measurement (assumed proportional to the measurement plus a time-independent error term)
       SOC_Ultuna[j,i]  ~ dnorm(Tot_Ultuna[j,i],1/(error_SOC_Ultuna[j]*error_SOC[j,i]))
-      #SOC_Ultuna[j,i]  ~ dnorm(Tot_Ultuna[j,i],1/(error_SOC_Ultuna[j]*1.5))
-      #SOC_Ultuna[j,i]  ~ dunif(Tot_Ultuna[j,i]-Tot_Ultuna[j,i]*error_SOC_Ultuna[j],Tot_Ultuna[j,i]+Tot_Ultuna[j,i]*error_SOC_Ultuna[j])
-      
       error_SOC[j,i]~ dunif(0.75,1.25)
       
     }
+    
     
   }
   
@@ -105,8 +103,12 @@ model{
   # Xie, Yajun. 2020. “A Meta-Analysis of Critique of Litterbag Method Used in Examining Decomposition of Leaf Litters.
   #” Journal of Soils and Sediments 20 (4): 1881–86. https://doi.org/10.1007/s11368-020-02572-9.
   
-  k1_ult    ~ dunif(0.01, 1)
-  k2_ult    ~ dunif(0,0.03)
+  #k1_ult    ~ dunif(0.4, 1)
+  #k2_ult    ~ dunif(0,0.03)
+
+  
+  k1_ult    ~ dnorm(0.65, 1/(0.65*0.05)) #T(0.2, 1)
+  k2_ult    ~ dnorm(0.0085,1/(0.0085*0.05)) #T(0.006, 0.01)
   
    
   h_S_ult     ~ dunif(0.125-0.125*limits_h,0.125+0.125*limits_h)
@@ -121,19 +123,20 @@ model{
   #SR_cereals_ult    ~ dnorm(11,1/2)
   SR_root_crops_ult ~ dunif(29.49853-29.49853*limit_SR,29.49853+29.49853*limit_SR)
   SR_oilseeds_ult   ~ dunif(8-8*limit_SR,8+8*limit_SR)
-  SR_maize_ult      ~ dunif(6.25-6.25*limit_SR,6.25+6.25*limit_SR)
+  #SR_maize_ult      ~ dunif(6.25-6.25*limit_SR,6.25+6.25*limit_SR)
+  SR_maize_ult      ~ dunif(6.25-6.25*limit_SR,30)
   
   #alpha ~dunif(0,1)
   #alpha_maize ~dunif(0,1)
-  alpha ~dunif(0,0.001)
-  alpha_maize ~dunif(0,0.001)
+  alpha ~dunif(0,2)
+  alpha_maize ~dunif(0,2)
   
   
-  exudates_coeff ~ dnorm(1.65, 1/0.4125) #10% error
-  e_depth_cer ~ dnorm(1, 1/0.25) #10% error
-  e_depth_root ~ dnorm(1, 1/0.25) #10% error
-  e_depth_oil ~ dnorm(1, 1/0.25) #10% error
-  e_depth_maize ~ dnorm(1, 1/0.25) #10% error
+  # INERT
+  R_Ultuna~ dunif(0,15) # Inert pool
+
+  #exudates_coeff ~ dunif(1.65-(1.65*0.1), 1.65+(1.65*0.1)) #10% error
+  exudates_coeff = 1.65
   
   #Init_ratio_Ultuna ~ dnorm(0.9291667,1/(0.9291667*0.2)) T(0.8,0.98)
   Init_ratio_Ultuna ~ dunif(0.8,0.98)
@@ -146,5 +149,5 @@ model{
   limits_h<-1
   limits_k<-1
   limit_SR<-1
-  
+
 }
